@@ -18,11 +18,19 @@ seletor "Suburbana / Urbana" no topo:
   As estimativas não são inventadas: a âncora (1ª e última viagem na
   origem) vem do horário oficial, e o tempo até cada paragem seguinte
   foi medido nas viagens reais do `FULL_DATA` — o troço urbano usa o
-  mesmo corredor do suburbano, as paragens sobrepõem-se. Coimbra B e
-  República são dois ramos que só se juntam na Portagem; o troço direto
-  entre eles (Sereia, Celas, Polo Ciências da Saúde, Pediátrico,
-  Hospitais) ainda está em construção, sendo a República a última
-  paragem funcional nesse sentido.
+  mesmo corredor do suburbano, as paragens sobrepõem-se.
+
+  Coimbra B e República são dois ramos. Para Vale das Flores descem os
+  dois até à Portagem, mas **entre si ligam-se em cima**, cortando do
+  Arnado para a Loja de Cidadão sem passar pela Portagem (é a ligação em
+  V do mapa oficial). O Aeminium só serve a ligação Portagem–Coimbra B.
+  Essa perna Arnado–Loja de Cidadão é a única sem medição possível
+  (nenhum serviço do `FULL_DATA` a percorre): 403 m estimados a
+  257 m/min, a velocidade medida neste mesmo corredor.
+
+  Mais a norte, o troço Sereia / Celas / Polo Ciências da Saúde /
+  Pediátrico / Hospitais ainda está em construção — a República é a
+  última paragem funcional nesse sentido.
 
 Ao abrir, a app escolhe sozinha o separador do dia certo (dias úteis /
 sábado / domingo, conforme a data de hoje) e, na Suburbana, a tabela já
