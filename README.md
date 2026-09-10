@@ -1,32 +1,29 @@
 # Autocarros (Metro Mondego)
 
-Página única, sem backend. Tem as duas linhas do Metro Mondego, num
-seletor "Suburbana / Urbana" no topo:
+Página única, sem backend. Uma só vista: escolhes a paragem e vês tudo
+o que lá passa, dos dois serviços do Metro Mondego.
 
 - **Suburbana** (Coimbra-B / República ↔ Corvo / Lousã / Serpins):
   horários fixos embutidos no HTML — dias úteis, sábados, e
-  domingos/feriados, 37 paragens, nos dois sentidos. Mostra o próximo
-  autocarro de uma estação escolhida, com contagem decrescente. A
-  estação fica guardada em `localStorage`.
-- **Urbana** (triângulo Coimbra B / República / Vale das Flores, 6
-  ligações direcionais): não tem horário fixo por paragem, é por
-  frequência — mostra o intervalo em minutos por banda horária
-  (madrugada / dia / noite), com a banda atual destacada, e a 1ª e
-  última viagem **estimadas em cada paragem** do percurso. A linha
-  escolhida fica guardada em `localStorage`.
+  domingos/feriados, 37 paragens, nos dois sentidos. Dá o próximo
+  autocarro com contagem decrescente. A paragem fica em `localStorage`.
+- **Urbana** (Coimbra B / República / Vale das Flores): não tem horário
+  fixo por paragem, é por frequência. Nas paragens que serve aparece um
+  cartão com o intervalo em minutos na banda horária atual e, por
+  destino, a 1ª e última viagem estimadas ali. Nas outras não aparece.
 
   As estimativas não são inventadas: a âncora (1ª e última viagem na
-  origem) vem do horário oficial, e o tempo até cada paragem seguinte
-  foi medido nas viagens reais do `FULL_DATA` — o troço urbano usa o
-  mesmo corredor do suburbano, as paragens sobrepõem-se.
+  origem) vem do horário oficial, e o tempo até cada paragem foi medido
+  nas viagens reais do `FULL_DATA` — a urbana corre no mesmo corredor do
+  suburbano e as paragens sobrepõem-se.
 
   Coimbra B e República são dois ramos. Para Vale das Flores descem os
   dois até à Portagem, mas **entre si ligam-se em cima**, cortando do
-  Arnado para a Loja de Cidadão sem passar pela Portagem (é a ligação em
-  V do mapa oficial). O Aeminium só serve a ligação Portagem–Coimbra B.
-  Essa perna Arnado–Loja de Cidadão é a única sem medição possível
-  (nenhum serviço do `FULL_DATA` a percorre): 403 m estimados a
-  257 m/min, a velocidade medida neste mesmo corredor.
+  Arnado para a Loja de Cidadão sem passar pela Portagem. O Aeminium só
+  serve a ligação Portagem–Coimbra B. Essa perna Arnado–Loja de Cidadão
+  é a única sem medição possível (nenhum serviço do `FULL_DATA` a
+  percorre): 403 m estimados a 257 m/min, a velocidade medida neste
+  mesmo corredor.
 
   Mais a norte, o troço Sereia / Celas / Polo Ciências da Saúde /
   Pediátrico / Hospitais ainda está em construção — a República é a

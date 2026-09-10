@@ -47,7 +47,6 @@
   .clock{font-family:'IBM Plex Mono', monospace; font-size:0.95rem; color:var(--muted);}
 
   .stationpick{position:relative; margin-bottom:12px;}
-  #urbanPick{display:none;}
   .sp-label{display:block; font-size:0.78rem; color:var(--muted); margin-bottom:6px;}
   .sp-input-row{
     display:flex; align-items:center; gap:8px;
@@ -77,7 +76,7 @@
     display:flex; background:var(--panel); border:1px solid var(--line);
     border-radius:13px; padding:4px; margin-bottom:12px; gap:3px;
   }
-  input[name="dir"], input[name="dia"], input[name="linha"]{ display:none; }
+  input[name="dir"], input[name="dia"]{ display:none; }
   .dirswitch label{
     flex:1; text-align:center; padding:11px 4px; border-radius:10px;
     cursor:pointer; transition:background .15s, color .15s;
@@ -136,19 +135,22 @@
   #t2:checked ~ .segmented label[for="t2"]{
     background:var(--panel-2); color:var(--ink); font-weight:600;
   }
-  .linesw{ margin-bottom:14px; }
-  #lnSub:checked ~ .linesw label[for="lnSub"],
-  #lnUrb:checked ~ .linesw label[for="lnUrb"]{
-    background:var(--panel-2); color:var(--ink); font-weight:600;
+  /* cartão da Urbana: só aparece nas paragens que ela serve */
+  .urbcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; margin-bottom:16px;
   }
-
-  .urbgrid{ display:flex; flex-wrap:wrap; gap:6px; }
-  .urb-pill{
-    flex:1 1 calc(50% - 6px); background:var(--panel); border:1px solid var(--line);
-    border-radius:10px; padding:10px 8px; font:inherit; font-size:0.82rem;
-    color:var(--muted); cursor:pointer; text-align:center;
+  .urbcard[hidden]{display:none;}
+  .urbcard .cap{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:0.72rem; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.06em; margin-bottom:9px;
   }
-  .urb-pill.active{ background:var(--panel-2); color:var(--ink); font-weight:600; border-color:rgba(255,183,3,0.4); }
+  .urbrow{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:5px 0;}
+  .urbrow + .urbrow{border-top:1px solid var(--line);}
+  .urbrow .dest{font-size:0.92rem; font-weight:600;}
+  .urbrow .det{font-family:'IBM Plex Mono', monospace; font-size:0.76rem; color:var(--muted); text-align:right;}
+  .urbrow .det b{color:var(--ink); font-weight:600;}
 
   .legend{
     display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -194,13 +196,6 @@
     <div class="clock" id="clock">--:--</div>
   </div>
 
-  <input type="radio" name="linha" id="lnSub" autocomplete="off" checked>
-  <input type="radio" name="linha" id="lnUrb" autocomplete="off">
-  <div class="segmented linesw">
-    <label for="lnSub">Suburbana</label>
-    <label for="lnUrb">Urbana</label>
-  </div>
-
   <div class="stationpick" id="stationpick">
     <label class="sp-label" for="stationInput">a minha estação</label>
     <div class="sp-input-row">
@@ -217,11 +212,6 @@
     <label for="dirB"><span class="arrow">←</span><span class="txt">De Coimbra</span></label>
   </div>
 
-  <div class="stationpick" id="urbanPick">
-    <label class="sp-label">a minha linha</label>
-    <div class="urbgrid" id="urbGrid"></div>
-  </div>
-
   <div class="hero" id="hero">
     <div class="label" id="heroLabel">próximo autocarro</div>
     <div class="row">
@@ -232,6 +222,8 @@
       <div id="heroPill"></div>
     </div>
   </div>
+
+  <div class="urbcard" id="urbCard"></div>
 
   <input type="radio" name="dia" id="t0" autocomplete="off">
   <input type="radio" name="dia" id="t1" autocomplete="off">
@@ -307,14 +299,12 @@ const URBAN_ROUTES = [
    first:{uteis:"05:25",sabados:"06:23",domingos:"06:23"}, last:{uteis:"23:44",sabados:"00:15",domingos:"00:18"},
    stops:[["Coimbra B",0],["Casa do Sal",1],["A\u00e7ude",2],["Arnado",4],["Loja do Cidad\u00e3o",6],["C\u00e2mara",7],["Mercado",8],["Rep\u00fablica",9]]}
 ];
-let urbRouteIdx = 0;
 
 let currentStation = DEFAULT_STATION;
 
 function typeForWeekday(w){ return DAY_LABEL[w]; }
 function isChegada(){ return document.getElementById("dirA").checked; }
 function currentDirKey(){ return isChegada() ? "chegada" : "partida"; }
-function isUrban(){ return document.getElementById("lnUrb").checked; }
 function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 
 function buildDate(baseDate, hhmm){
@@ -339,14 +329,62 @@ function buildSameDay(baseDate, hhmm){
   d.setHours(h, m, 0, 0);
   return d;
 }
+/* Ligações urbanas que servem esta paragem neste sentido.
+   As que vão para Vale das Flores afastam-se de Coimbra ("De Coimbra");
+   as restantes aproximam-se ("Para Coimbra"). A última paragem de cada
+   ligação não conta — aí o autocarro termina, não se apanha. */
+function urbanRoutesFor(station, dirKey){
+  return URBAN_ROUTES.filter(r => {
+    const paraCoimbra = r.to !== "vf";
+    if ((dirKey === "chegada") !== paraCoimbra) return false;
+    const i = r.stops.findIndex(s => s[0] === station);
+    return i !== -1 && i < r.stops.length - 1;
+  });
+}
+
+function renderUrbanCard(now, station, dirKey, activeType, isToday){
+  const card = document.getElementById("urbCard");
+  const rotas = urbanRoutesFor(station, dirKey);
+  if (rotas.length === 0){ card.hidden = true; return; }
+  card.hidden = false;
+
+  const bands = URBAN_BANDS[activeType];
+  const banda = isToday
+    ? bands.find(b => now >= buildDate(now,b[0]) && now < buildDate(now,b[1]))
+    : null;
+
+  // Duas ligações podem ter o mesmo destino a partir desta paragem (ex.:
+  // em Solum, vindas de Coimbra B e da República). Para quem espera é o
+  // mesmo autocarro, por isso junta-se numa linha só.
+  const ord = t => { const [h,m] = t.split(":").map(Number); return (h<5 ? h+24 : h)*60 + m; };
+  const porDestino = new Map();
+  rotas.forEach(r => {
+    const off = r.stops.find(s => s[0] === station)[1];
+    const p = shiftTime(r.first[activeType], off);
+    const u = shiftTime(r.last[activeType], off);
+    const g = porDestino.get(r.to);
+    if (!g) porDestino.set(r.to, {nome:r.toName, p, u});
+    else {
+      if (ord(p) < ord(g.p)) g.p = p;
+      if (ord(u) > ord(g.u)) g.u = u;
+    }
+  });
+
+  const linhas = [...porDestino].map(([cod, g]) =>
+    `<div class="urbrow">
+      <span class="dest" style="color:${URBAN_COLOR[cod]}">→ ${g.nome}</span>
+      <span class="det">1ª ${g.p} · últ ${g.u}</span>
+    </div>`
+  ).join("");
+
+  card.innerHTML = `<div class="cap"><span>urbana</span><span>${
+    banda ? `a cada <b style="color:var(--ink)">${banda[2]}</b> min · até ${banda[1]}` : "fora de serviço"
+  }</span></div>${linhas}`;
+}
+
 function updateChrome(){
-  const urban = isUrban();
   document.getElementById("clock").textContent =
     new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
-  document.getElementById("stationpick").style.display = urban ? "none" : "";
-  document.getElementById("subDirswitch").style.display = urban ? "none" : "";
-  document.getElementById("legendRow").style.display = urban ? "none" : "";
-  document.getElementById("urbanPick").style.display = urban ? "block" : "none";
 }
 function fmtCountdown(ms){
   const min = Math.round(ms/60000);
@@ -405,7 +443,7 @@ async function selectStation(name){
   stationInput.value = name;
   hideResults();
   try { localStorage.setItem("estacao_escolhida", name); } catch(e){}
-  renderCurrent(true);
+  render(true);
 }
 
 async function init(){
@@ -417,19 +455,14 @@ async function init(){
   currentStation = saved || DEFAULT_STATION;
   stationInput.value = currentStation;
 
-  try {
-    const v = parseInt(localStorage.getItem("urbana_rota"), 10);
-    if (v >= 0 && v < URBAN_ROUTES.length) urbRouteIdx = v;
-  } catch(e){}
-  buildUrbanGrid();
 
   const todayType = typeForWeekday(new Date().getDay());
   document.getElementById("t" + TYPE_KEYS.indexOf(todayType)).checked = true;
 
-  document.querySelectorAll('input[name="dia"], input[name="dir"], input[name="linha"]')
-    .forEach(r => r.addEventListener("change", () => renderCurrent(true)));
-  renderCurrent(true);
-  setInterval(renderCurrent, 20000);
+  document.querySelectorAll('input[name="dia"], input[name="dir"]')
+    .forEach(r => r.addEventListener("change", () => render(true)));
+  render(true);
+  setInterval(render, 20000);
 }
 
 /* Centra a linha do próximo autocarro na lista. Observa essa linha com
@@ -509,6 +542,8 @@ function render(scrollToNext){
     }
   }
 
+  renderUrbanCard(now, currentStation, dirKey, activeType, isToday);
+
   const heroLabel = document.getElementById("heroLabel");
   const heroTime = document.getElementById("heroTime");
   const heroCountdown = document.getElementById("heroCountdown");
@@ -550,97 +585,6 @@ function render(scrollToNext){
     heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown(nb.date - now) + "</b>";
     heroPill.innerHTML = pill([nb.t, nb.dest, nb.orig]);
   }
-}
-
-const urbGrid = document.getElementById("urbGrid");
-function buildUrbanGrid(){
-  urbGrid.innerHTML = URBAN_ROUTES.map((r, i) =>
-    `<button type="button" class="urb-pill${i===urbRouteIdx?' active':''}" data-idx="${i}">${r.label}</button>`
-  ).join("");
-}
-urbGrid.addEventListener("click", (e) => {
-  const btn = e.target.closest(".urb-pill");
-  if (!btn) return;
-  urbRouteIdx = +btn.dataset.idx;
-  try { localStorage.setItem("urbana_rota", String(urbRouteIdx)); } catch(e){}
-  buildUrbanGrid();
-  renderCurrent(true);
-});
-
-function renderUrban(scrollToNext){
-  disarmSnap();
-  updateChrome();
-  const now = new Date();
-  const todayType = typeForWeekday(now.getDay());
-  const activeIdx = [...document.querySelectorAll('input[name="dia"]')].findIndex(r=>r.checked);
-  const activeType = TYPE_KEYS[activeIdx === -1 ? TYPE_KEYS.indexOf(todayType) : activeIdx];
-  const isToday = activeType === todayType;
-
-  const route = URBAN_ROUTES[urbRouteIdx];
-  const color = URBAN_COLOR[route.to];
-  const bandsActive = URBAN_BANDS[activeType];
-  const bandsToday = URBAN_BANDS[todayType];
-  const pillHtml = `<span class="pill" style="color:${color};background:color-mix(in srgb, ${color} 12%, transparent);border:1px solid color-mix(in srgb, ${color} 35%, transparent)">${route.toName}</span>`;
-
-  const heroLabel = document.getElementById("heroLabel");
-  const heroTime = document.getElementById("heroTime");
-  const heroCountdown = document.getElementById("heroCountdown");
-  const heroPill = document.getElementById("heroPill");
-
-  const firstToday = buildSameDay(now, route.first[todayType]);
-  const lastToday = buildDate(now, route.last[todayType]);
-
-  if (now < firstToday){
-    heroLabel.textContent = "ainda não começou hoje";
-    heroTime.textContent = route.first[todayType];
-    heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown(firstToday - now) + "</b>";
-    heroPill.innerHTML = pillHtml;
-  } else if (now > lastToday){
-    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
-    const tmrType = typeForWeekday(tomorrow.getDay());
-    heroLabel.textContent = "já não há mais hoje · primeiro amanhã";
-    heroTime.textContent = route.first[tmrType];
-    heroCountdown.innerHTML = "";
-    heroPill.innerHTML = pillHtml;
-  } else {
-    const band = bandsToday.find(b => now >= buildDate(now,b[0]) && now < buildDate(now,b[1]));
-    heroLabel.textContent = "em serviço · a cada (min)";
-    heroTime.textContent = band ? band[2] : "—";
-    heroCountdown.innerHTML = band ? "até " + band[1] : "";
-    heroPill.innerHTML = pillHtml;
-  }
-
-  const rowHtml = (time, label, active) =>
-    `<div class="rowline ${active?'next':''}">
-      <span class="t">${time}</span>
-      <span class="destchip" style="color:${color}">${label}</span>
-    </div>`;
-
-  const rows = [];
-  bandsActive.forEach(b => {
-    const active = isToday && now >= buildDate(now,b[0]) && now < buildDate(now,b[1]);
-    rows.push(rowHtml(`${b[0]} – ${b[1]}`, "a cada " + b[2] + " min", active));
-  });
-
-  // 1ª e última viagem estimadas em cada paragem: âncora real na origem
-  // (PDF) + tempo medido nas viagens do suburbano.
-  rows.push(`<div class="rowline urbsep"><span>paragem</span><span>1ª · última</span></div>`);
-  route.stops.forEach(([nome, off]) => {
-    const p = shiftTime(route.first[activeType], off);
-    const u = shiftTime(route.last[activeType], off);
-    rows.push(`<div class="rowline urbstop">
-      <span class="nome">${nome}</span>
-      <span class="destchip" style="color:${color}">${p} · ${u}</span>
-    </div>`);
-  });
-
-  const listEl = document.getElementById("list");
-  listEl.innerHTML = rows.join("");
-  if (scrollToNext) listEl.scrollTop = 0;
-}
-
-function renderCurrent(scrollToNext){
-  if (isUrban()) renderUrban(scrollToNext); else render(scrollToNext);
 }
 
 init();
