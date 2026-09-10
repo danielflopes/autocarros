@@ -443,9 +443,12 @@ function render(scrollToNext){
   document.getElementById("legendWord").textContent = mode.word;
 
   // legend shows only the labels that actually appear here
+  // Quando se mostra a origem em vez do destino, o nome sozinho é ambíguo
+  // ("Serpins" tanto lê como "vai para" como "vem de"). O prefixo resolve.
+  const prefix = mode.field === 2 ? "de " : "";
   const codes = [...new Set(stationActive.map(e => e[mode.field]))];
   document.getElementById("legendKeys").innerHTML = codes.map(c =>
-    `<span class="k"><span class="dot" style="background:${COLOR[c]}"></span>${NAME[c]}</span>`
+    `<span class="k"><span class="dot" style="background:${COLOR[c]}"></span>${prefix}${NAME[c]}</span>`
   ).join("");
 
   let nextIdxToday = -1;
@@ -465,7 +468,7 @@ function render(scrollToNext){
       const isNext = isToday && i === nextIdxToday;
       return `<div class="rowline ${past?'past':''} ${isNext?'next':''}">
         <span class="t">${e[0]}</span>
-        <span class="destchip" style="color:${COLOR[code]}">${NAME[code]}</span>
+        <span class="destchip" style="color:${COLOR[code]}">${prefix}${NAME[code]}</span>
       </div>`;
     }).join("");
 
@@ -482,9 +485,10 @@ function render(scrollToNext){
 
   // hero uses TODAY's real schedule, with its own label mode
   const todayMode = labelMode(stationToday);
+  const todayPrefix = todayMode.field === 2 ? "de " : "";
   function pill(entryArr){
     const c = entryArr[todayMode.field];
-    return `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${NAME[c]}</span>`;
+    return `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${todayPrefix}${NAME[c]}</span>`;
   }
 
   let idx = -1;
@@ -502,10 +506,11 @@ function render(scrollToNext){
     } else {
       const tmrMode = labelMode(tmrRows);
       const c = tmrRows[0][tmrMode.field];
+      const tmrPrefix = tmrMode.field === 2 ? "de " : "";
       heroLabel.textContent = "já não há mais hoje · primeiro amanhã";
       heroTime.textContent = tmrRows[0][0];
       heroCountdown.innerHTML = "";
-      heroPill.innerHTML = `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${NAME[c]}</span>`;
+      heroPill.innerHTML = `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${tmrPrefix}${NAME[c]}</span>`;
     }
   } else {
     const nb = todaysRows[idx];
