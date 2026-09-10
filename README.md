@@ -19,3 +19,17 @@ publicar um `index.html` novo — não há como atualizar só os horários sem
 reenviar o ficheiro inteiro.
 
 Horários válidos desde 10 de setembro de 2026.
+
+## Relação com o Home Assistant
+
+Esta app **já não tem cópia no Pi**. Existiu uma versão em
+`config/www/autocarros.html` no repo `homeassistant`, mas foi removida em
+2026-09-10 (commit `b3bb882`) quando a app se mudou de vez para o GitHub
+Pages — regra da casa nº 7 desse repo: webapps pessoais, não específicas da
+domótica, não ficam em `config/www/` do Pi, vão para o GitHub Pages.
+
+O botão "Autocarros" no dashboard `apps-df` do Home Assistant aponta
+diretamente para <https://danielflopes.github.io/autocarros/> (este repo).
+Não há nada para sincronizar: esta pasta é a única fonte. Se um dia
+aparecer de novo um `autocarros.html` em `config/www/` no repo
+`homeassistant`, é resíduo antigo — pode apagar-se.
