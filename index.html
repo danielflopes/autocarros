@@ -48,6 +48,7 @@
   .clock{font-family:'IBM Plex Mono', monospace; font-size:0.95rem; color:var(--muted);}
 
   .stationpick{position:relative; margin-bottom:12px;}
+  #urbanPick{display:none;}
   .sp-label{display:block; font-size:0.78rem; color:var(--muted); margin-bottom:6px;}
   .sp-input-row{
     display:flex; align-items:center; gap:8px;
@@ -77,7 +78,7 @@
     display:flex; background:var(--panel); border:1px solid var(--line);
     border-radius:13px; padding:4px; margin-bottom:12px; gap:3px;
   }
-  .dirswitch input{display:none;}
+  input[name="dir"], input[name="dia"], input[name="linha"]{ display:none; }
   .dirswitch label{
     flex:1; text-align:center; padding:11px 4px; border-radius:10px;
     cursor:pointer; transition:background .15s, color .15s;
@@ -127,7 +128,6 @@
     display:flex; background:var(--panel); border:1px solid var(--line);
     border-radius:12px; padding:3px; margin-bottom:10px; gap:2px;
   }
-  .segmented input{display:none;}
   .segmented label{
     flex:1; text-align:center; padding:8px 2px; font-size:0.82rem;
     color:var(--muted); border-radius:9px; cursor:pointer; transition:background .15s, color .15s;
@@ -137,6 +137,19 @@
   #t2:checked ~ .segmented label[for="t2"]{
     background:var(--panel-2); color:var(--ink); font-weight:600;
   }
+  .linesw{ margin-bottom:14px; }
+  #lnSub:checked ~ .linesw label[for="lnSub"],
+  #lnUrb:checked ~ .linesw label[for="lnUrb"]{
+    background:var(--panel-2); color:var(--ink); font-weight:600;
+  }
+
+  .urbgrid{ display:flex; flex-wrap:wrap; gap:6px; }
+  .urb-pill{
+    flex:1 1 calc(50% - 6px); background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:10px 8px; font:inherit; font-size:0.82rem;
+    color:var(--muted); cursor:pointer; text-align:center;
+  }
+  .urb-pill.active{ background:var(--panel-2); color:var(--ink); font-weight:600; border-color:rgba(255,183,3,0.4); }
 
   .legend{
     display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -174,11 +187,18 @@
 <div class="app">
 
   <div class="top">
-    <div class="brand">Linha Suburbana</div>
+    <div class="brand" id="brandLabel">Linha Suburbana</div>
     <div class="clock" id="clock">--:--</div>
   </div>
 
-  <div class="stationpick">
+  <input type="radio" name="linha" id="lnSub" autocomplete="off" checked>
+  <input type="radio" name="linha" id="lnUrb" autocomplete="off">
+  <div class="segmented linesw">
+    <label for="lnSub">Suburbana</label>
+    <label for="lnUrb">Urbana</label>
+  </div>
+
+  <div class="stationpick" id="stationpick">
     <label class="sp-label" for="stationInput">a minha estação</label>
     <div class="sp-input-row">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
@@ -187,11 +207,16 @@
     <div class="sp-results" id="stationResults"></div>
   </div>
 
-  <input type="radio" name="dir" id="dirA" checked>
-  <input type="radio" name="dir" id="dirB">
-  <div class="dirswitch">
+  <input type="radio" name="dir" id="dirA" autocomplete="off" checked>
+  <input type="radio" name="dir" id="dirB" autocomplete="off">
+  <div class="dirswitch" id="subDirswitch">
     <label for="dirA"><span class="arrow">→</span><span class="txt">Para Coimbra</span></label>
     <label for="dirB"><span class="arrow">←</span><span class="txt">De Coimbra</span></label>
+  </div>
+
+  <div class="stationpick" id="urbanPick">
+    <label class="sp-label">a minha linha</label>
+    <div class="urbgrid" id="urbGrid"></div>
   </div>
 
   <div class="hero" id="hero">
@@ -205,23 +230,23 @@
     </div>
   </div>
 
-  <input type="radio" name="dia" id="t0">
-  <input type="radio" name="dia" id="t1">
-  <input type="radio" name="dia" id="t2">
+  <input type="radio" name="dia" id="t0" autocomplete="off">
+  <input type="radio" name="dia" id="t1" autocomplete="off">
+  <input type="radio" name="dia" id="t2" autocomplete="off">
   <div class="segmented">
     <label for="t0">Dias úteis</label>
     <label for="t1">Sábados</label>
     <label for="t2">Dom. / Fer.</label>
   </div>
 
-  <div class="legend">
+  <div class="legend" id="legendRow">
     <div class="keys" id="legendKeys"></div>
     <span id="legendWord">destino</span>
   </div>
 
   <div class="board"><div class="list" id="list"></div></div>
 
-  <div class="foot">Metro Mondego · Linha Suburbana<br>Horários válidos desde 10 de setembro de 2026</div>
+  <div class="foot">Metro Mondego · Linhas Suburbana e Urbana<br>Horários válidos desde 10 de setembro de 2026</div>
 
 </div>
 
@@ -237,11 +262,36 @@ const COLOR = {cb:"var(--c-amber)", rp:"var(--c-teal)", se:"var(--c-amber)", lo:
 const TYPE_KEYS = ["uteis","sabados","domingos"];
 const DAY_LABEL = ["domingos","uteis","uteis","uteis","uteis","uteis","sabados"];
 
+// Linha Urbana: frequ\u00eancia (min de intervalo), n\u00e3o horas fixas por paragem.
+// As bandas s\u00e3o iguais para todas as liga\u00e7\u00f5es \u2014 s\u00f3 a 1\u00aa/\u00faltima viagem muda.
+const URBAN_BANDS = {
+  uteis:    [["05:00","07:30","15"], ["07:30","19:00","5\u20137,5"], ["19:00","00:40","15"]],
+  sabados:  [["05:00","07:30","7,5"], ["07:30","19:00","7,5\u201315"], ["19:00","00:40","15"]],
+  domingos: [["05:00","07:30","15"], ["07:30","19:00","15"], ["19:00","00:40","15"]]
+};
+const URBAN_COLOR = {cb:"var(--c-amber)", rp:"var(--c-teal)", vf:"var(--c-violet)"};
+const URBAN_ROUTES = [
+  {from:"cb", to:"vf", label:"Coimbra B \u2192 V. Flores", toName:"Vale das Flores",
+   first:{uteis:"05:05",sabados:"06:05",domingos:"06:05"}, last:{uteis:"00:08",sabados:"00:30",domingos:"00:30"}},
+  {from:"vf", to:"cb", label:"V. Flores \u2192 Coimbra B", toName:"Coimbra B",
+   first:{uteis:"04:43",sabados:"06:37",domingos:"07:32"}, last:{uteis:"23:32",sabados:"00:04",domingos:"00:02"}},
+  {from:"rp", to:"vf", label:"Rep\u00fablica \u2192 V. Flores", toName:"Vale das Flores",
+   first:{uteis:"06:35",sabados:"06:40",domingos:"07:35"}, last:{uteis:"00:22",sabados:"00:40",domingos:"00:40"}},
+  {from:"vf", to:"rp", label:"V. Flores \u2192 Rep\u00fablica", toName:"Rep\u00fablica",
+   first:{uteis:"05:47",sabados:"06:00",domingos:"06:00"}, last:{uteis:"00:02",sabados:"23:49",domingos:"23:02"}},
+  {from:"rp", to:"cb", label:"Rep\u00fablica \u2192 Coimbra B", toName:"Coimbra B",
+   first:{uteis:"05:45",sabados:"06:56",domingos:"06:40"}, last:{uteis:"00:13",sabados:"00:00",domingos:"00:05"}},
+  {from:"cb", to:"rp", label:"Coimbra B \u2192 Rep\u00fablica", toName:"Rep\u00fablica",
+   first:{uteis:"05:25",sabados:"06:23",domingos:"06:23"}, last:{uteis:"23:44",sabados:"00:15",domingos:"00:18"}}
+];
+let urbRouteIdx = 0;
+
 let currentStation = DEFAULT_STATION;
 
 function typeForWeekday(w){ return DAY_LABEL[w]; }
 function isChegada(){ return document.getElementById("dirA").checked; }
 function currentDirKey(){ return isChegada() ? "chegada" : "partida"; }
+function isUrban(){ return document.getElementById("lnUrb").checked; }
 function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 
 function buildDate(baseDate, hhmm){
@@ -250,6 +300,25 @@ function buildDate(baseDate, hhmm){
   if (h < 5) d.setDate(d.getDate() + 1);
   d.setHours(h, m, 0, 0);
   return d;
+}
+// Igual a buildDate mas sem o "passa para amanh\u00e3 se for madrugada" \u2014 usa-se
+// para a 1\u00aa viagem da Urbana, que pode ser bem cedo (ex.: 04:43) e continua
+// a ser a viagem de hoje, n\u00e3o de amanh\u00e3.
+function buildSameDay(baseDate, hhmm){
+  const [h,m] = hhmm.split(":").map(Number);
+  const d = new Date(baseDate);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+function updateChrome(){
+  const urban = isUrban();
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  document.getElementById("brandLabel").textContent = urban ? "Linha Urbana" : "Linha Suburbana";
+  document.getElementById("stationpick").style.display = urban ? "none" : "";
+  document.getElementById("subDirswitch").style.display = urban ? "none" : "";
+  document.getElementById("legendRow").style.display = urban ? "none" : "";
+  document.getElementById("urbanPick").style.display = urban ? "block" : "none";
 }
 function fmtCountdown(ms){
   const min = Math.round(ms/60000);
@@ -277,7 +346,7 @@ const resultsEl = document.getElementById("stationResults");
 
 function showResults(query){
   const q = norm(query || "");
-  const matches = STATIONS.filter(s => norm(s).includes(q)).slice(0, 8);
+  const matches = STATIONS.filter(s => norm(s).includes(q));
   resultsEl.innerHTML = matches.length
     ? matches.map(s => `<div class="sp-item" data-station="${s}">${s}</div>`).join("")
     : '<div class="sp-empty">Sem estações com esse nome</div>';
@@ -285,7 +354,7 @@ function showResults(query){
 }
 function hideResults(){ resultsEl.classList.remove("open"); }
 
-stationInput.addEventListener("focus", () => showResults(stationInput.value));
+stationInput.addEventListener("focus", () => showResults(""));
 stationInput.addEventListener("input", () => showResults(stationInput.value));
 resultsEl.addEventListener("click", (e) => {
   const item = e.target.closest(".sp-item");
@@ -308,7 +377,7 @@ async function selectStation(name){
   stationInput.value = name;
   hideResults();
   try { localStorage.setItem("estacao_escolhida", name); } catch(e){}
-  render(true);
+  renderCurrent(true);
 }
 
 async function init(){
@@ -320,13 +389,19 @@ async function init(){
   currentStation = saved || DEFAULT_STATION;
   stationInput.value = currentStation;
 
+  try {
+    const v = parseInt(localStorage.getItem("urbana_rota"), 10);
+    if (v >= 0 && v < URBAN_ROUTES.length) urbRouteIdx = v;
+  } catch(e){}
+  buildUrbanGrid();
+
   const todayType = typeForWeekday(new Date().getDay());
   document.getElementById("t" + TYPE_KEYS.indexOf(todayType)).checked = true;
 
-  document.querySelectorAll('input[name="dia"], input[name="dir"]')
-    .forEach(r => r.addEventListener("change", () => render(true)));
-  render(true);
-  setInterval(render, 20000);
+  document.querySelectorAll('input[name="dia"], input[name="dir"], input[name="linha"]')
+    .forEach(r => r.addEventListener("change", () => renderCurrent(true)));
+  renderCurrent(true);
+  setInterval(renderCurrent, 20000);
 }
 
 /* Centra a linha do próximo autocarro na lista. Observa essa linha com
@@ -354,9 +429,8 @@ function disarmSnap(){
 }
 
 function render(scrollToNext){
+  updateChrome();
   const now = new Date();
-  document.getElementById("clock").textContent =
-    now.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
 
   const dirKey = currentDirKey();
   const todayType = typeForWeekday(now.getDay());
@@ -443,6 +517,87 @@ function render(scrollToNext){
     heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown(nb.date - now) + "</b>";
     heroPill.innerHTML = pill([nb.t, nb.dest, nb.orig]);
   }
+}
+
+const urbGrid = document.getElementById("urbGrid");
+function buildUrbanGrid(){
+  urbGrid.innerHTML = URBAN_ROUTES.map((r, i) =>
+    `<button type="button" class="urb-pill${i===urbRouteIdx?' active':''}" data-idx="${i}">${r.label}</button>`
+  ).join("");
+}
+urbGrid.addEventListener("click", (e) => {
+  const btn = e.target.closest(".urb-pill");
+  if (!btn) return;
+  urbRouteIdx = +btn.dataset.idx;
+  try { localStorage.setItem("urbana_rota", String(urbRouteIdx)); } catch(e){}
+  buildUrbanGrid();
+  renderCurrent(true);
+});
+
+function renderUrban(scrollToNext){
+  disarmSnap();
+  updateChrome();
+  const now = new Date();
+  const todayType = typeForWeekday(now.getDay());
+  const activeIdx = [...document.querySelectorAll('input[name="dia"]')].findIndex(r=>r.checked);
+  const activeType = TYPE_KEYS[activeIdx === -1 ? TYPE_KEYS.indexOf(todayType) : activeIdx];
+  const isToday = activeType === todayType;
+
+  const route = URBAN_ROUTES[urbRouteIdx];
+  const color = URBAN_COLOR[route.to];
+  const bandsActive = URBAN_BANDS[activeType];
+  const bandsToday = URBAN_BANDS[todayType];
+  const pillHtml = `<span class="pill" style="color:${color};background:color-mix(in srgb, ${color} 12%, transparent);border:1px solid color-mix(in srgb, ${color} 35%, transparent)">${route.toName}</span>`;
+
+  const heroLabel = document.getElementById("heroLabel");
+  const heroTime = document.getElementById("heroTime");
+  const heroCountdown = document.getElementById("heroCountdown");
+  const heroPill = document.getElementById("heroPill");
+
+  const firstToday = buildSameDay(now, route.first[todayType]);
+  const lastToday = buildDate(now, route.last[todayType]);
+
+  if (now < firstToday){
+    heroLabel.textContent = "ainda não começou hoje";
+    heroTime.textContent = route.first[todayType];
+    heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown(firstToday - now) + "</b>";
+    heroPill.innerHTML = pillHtml;
+  } else if (now > lastToday){
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+    const tmrType = typeForWeekday(tomorrow.getDay());
+    heroLabel.textContent = "já não há mais hoje · primeiro amanhã";
+    heroTime.textContent = route.first[tmrType];
+    heroCountdown.innerHTML = "";
+    heroPill.innerHTML = pillHtml;
+  } else {
+    const band = bandsToday.find(b => now >= buildDate(now,b[0]) && now < buildDate(now,b[1]));
+    heroLabel.textContent = "em serviço · a cada (min)";
+    heroTime.textContent = band ? band[2] : "—";
+    heroCountdown.innerHTML = band ? "até " + band[1] : "";
+    heroPill.innerHTML = pillHtml;
+  }
+
+  const rowHtml = (time, label, active) =>
+    `<div class="rowline ${active?'next':''}">
+      <span class="t">${time}</span>
+      <span class="destchip" style="color:${color}">${label}</span>
+    </div>`;
+
+  const rows = [];
+  rows.push(rowHtml(route.first[activeType], "1ª viagem", false));
+  bandsActive.forEach(b => {
+    const active = isToday && now >= buildDate(now,b[0]) && now < buildDate(now,b[1]);
+    rows.push(rowHtml(`${b[0]} – ${b[1]}`, "a cada " + b[2] + " min", active));
+  });
+  rows.push(rowHtml(route.last[activeType], "última viagem", false));
+
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = rows.join("");
+  if (scrollToNext) listEl.scrollTop = 0;
+}
+
+function renderCurrent(scrollToNext){
+  if (isUrban()) renderUrban(scrollToNext); else render(scrollToNext);
 }
 
 init();

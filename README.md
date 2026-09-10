@@ -1,15 +1,22 @@
-# Autocarros — Linha Suburbana (Metro Mondego)
+# Autocarros (Metro Mondego)
 
-Página única, sem backend. Horários da Linha Suburbana do Metro Mondego
-(Coimbra-B / República ↔ Corvo / Lousã / Serpins) embutidos no próprio
-HTML — dias úteis, sábados, e domingos/feriados, 37 paragens, nos dois
-sentidos.
+Página única, sem backend. Tem as duas linhas do Metro Mondego, num
+seletor "Suburbana / Urbana" no topo:
 
-Mostra o próximo autocarro de uma estação escolhida, com contagem
-decrescente. A estação fica guardada em `localStorage` do browser. Ao
-abrir, escolhe sozinha o separador do dia certo (dias úteis / sábado /
-domingo, conforme a data de hoje) e a tabela de horários já vem com scroll
-feito até ao próximo autocarro.
+- **Suburbana** (Coimbra-B / República ↔ Corvo / Lousã / Serpins):
+  horários fixos embutidos no HTML — dias úteis, sábados, e
+  domingos/feriados, 37 paragens, nos dois sentidos. Mostra o próximo
+  autocarro de uma estação escolhida, com contagem decrescente. A
+  estação fica guardada em `localStorage`.
+- **Urbana** (triângulo Coimbra B / República / Vale das Flores, 6
+  ligações direcionais): não tem horário fixo por paragem, é por
+  frequência — mostra 1ª/última viagem e o intervalo em minutos por
+  banda horária (madrugada / dia / noite), com a banda atual destacada.
+  A linha escolhida fica guardada em `localStorage`.
+
+Ao abrir, a app escolhe sozinha o separador do dia certo (dias úteis /
+sábado / domingo, conforme a data de hoje) e, na Suburbana, a tabela já
+vem com scroll feito até ao próximo autocarro.
 
 Sem dependências externas a não ser a Google Fonts (cosmético — sem
 internet, cai para as fontes do sistema e funciona na mesma).
@@ -22,10 +29,11 @@ ser um URL real.
 
 ## Atualizar os horários
 
-Os dados estão dentro do `index.html`, no objeto `FULL_DATA`. Quando o
-Metro Mondego publicar horários novos, é preciso regenerar esse objeto e
-publicar um `index.html` novo — não há como atualizar só os horários sem
-reenviar o ficheiro inteiro.
+Os dados da Suburbana estão dentro do `index.html`, no objeto
+`FULL_DATA`; os da Urbana em `URBAN_ROUTES`/`URBAN_BANDS`. Quando o
+Metro Mondego publicar horários novos, é preciso regenerar esses objetos
+e publicar um `index.html` novo — não há como atualizar só os horários
+sem reenviar o ficheiro inteiro.
 
 Horários válidos desde 10 de setembro de 2026.
 
