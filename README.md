@@ -12,9 +12,17 @@ o que lá passa, dos dois serviços do Metro Mondego.
   são por isso **geradas** e aparecem com `~` — parte-se da 1ª viagem na
   origem, avança-se pela frequência da banda em que cada partida cai até
   à última viagem, e soma-se o tempo medido até à paragem. Nas bandas
-  com intervalo (ex.: 5–7,5 min) usa-se o ponto médio. Um cartão por
-  cima da tabela resume o intervalo em vigor e a 1ª/última por destino.
-  Nas paragens que a urbana não serve, nada disto aparece.
+  com intervalo (ex.: 5–7,5 min) usa-se o ponto médio. Nas paragens que
+  a urbana não serve não aparece nenhuma linha `~`.
+
+  Uma paragem do tronco comum é servida por duas ligações com o mesmo
+  destino (Colégios, para Vale das Flores, recebe as de Coimbra B e as
+  da República). Gera-se **uma série só por destino**, não uma por
+  ligação: o site oficial publica exatamente a mesma frequência em
+  paragens de ramo (Coimbra B, República) e de tronco (Portagem,
+  Colégios, Solum), o que só faz sentido se o número descrever o que
+  passa naquela paragem venha de onde vier. Contar as duas séries em
+  separado duplicava o mesmo autocarro.
 
   As estimativas não são inventadas: a âncora (1ª e última viagem na
   origem) vem do horário oficial, e o tempo até cada paragem foi medido

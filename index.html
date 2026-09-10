@@ -135,23 +135,6 @@
   #t2:checked ~ .segmented label[for="t2"]{
     background:var(--panel-2); color:var(--ink); font-weight:600;
   }
-  /* cartão da Urbana: só aparece nas paragens que ela serve */
-  .urbcard{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:12px 14px; margin-bottom:16px;
-  }
-  .urbcard[hidden]{display:none;}
-  .urbcard .cap{
-    display:flex; justify-content:space-between; align-items:baseline;
-    font-size:0.72rem; color:var(--muted); text-transform:uppercase;
-    letter-spacing:.06em; margin-bottom:9px;
-  }
-  .urbrow{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:5px 0;}
-  .urbrow + .urbrow{border-top:1px solid var(--line);}
-  .urbrow .dest{font-size:0.92rem; font-weight:600;}
-  .urbrow .det{font-family:'IBM Plex Mono', monospace; font-size:0.76rem; color:var(--muted); text-align:right;}
-  .urbrow .det b{color:var(--ink); font-weight:600;}
-
   .legend{
     display:flex; justify-content:space-between; align-items:center; gap:10px;
     font-size:0.76rem; color:var(--muted); margin:2px 4px 12px;
@@ -224,8 +207,6 @@
       <div id="heroPill"></div>
     </div>
   </div>
-
-  <div class="urbcard" id="urbCard"></div>
 
   <input type="radio" name="dia" id="t0" autocomplete="off">
   <input type="radio" name="dia" id="t1" autocomplete="off">
@@ -349,23 +330,40 @@ function freqMin(v){
 }
 
 /* A urbana não publica passagens, publica frequências. Estas horas são
-   geradas: parte-se da 1ª viagem na origem e avança-se pela frequência
-   da banda em que cada partida cai, até à última viagem; depois soma-se
-   o tempo medido até esta paragem. São estimativas — aparecem com "~". */
-function urbanDepartures(route, dayType, offset){
+   geradas: parte-se da 1ª viagem, avança-se pela frequência da banda em
+   que cada partida cai, até à última. São estimativas — aparecem com "~".
+
+   Uma paragem pode ser servida por mais do que uma ligação com o mesmo
+   destino (em Colégios, para Vale das Flores, vindas de Coimbra B e da
+   República). Para quem espera é o mesmo autocarro, por isso gera-se uma
+   série só por destino: da primeira chegada de qualquer delas até à
+   última, com a frequência publicada — que é a da linha naquele ponto. */
+function urbanSeriesAt(station, dirKey, dayType){
   const bands = URBAN_BANDS[dayType];
-  const fim = toMin(route.last[dayType]);
   const banda = m => bands.find(b => m >= toMin(b[0]) && m < toMin(b[1]));
+  // a 1ª viagem NÃO leva a regra da madrugada: pode ser às 04:43 e é mesmo
+  // a primeira do dia, não uma sobra da noite anterior
+  const plano = t => { const [h,m] = t.split(":").map(Number); return h*60 + m; };
+
+  const grupos = new Map();
+  urbanRoutesFor(station, dirKey).forEach(r => {
+    const off = r.stops.find(s => s[0] === station)[1];
+    const ini = plano(r.first[dayType]) + off;
+    const fim = toMin(r.last[dayType]) + off;
+    const g = grupos.get(r.to);
+    if (!g) grupos.set(r.to, {nome:r.toName, cor:URBAN_COLOR[r.to], ini, fim});
+    else { g.ini = Math.min(g.ini, ini); g.fim = Math.max(g.fim, fim); }
+  });
+
   const out = [];
-  // A 1ª viagem NÃO leva a regra da madrugada: pode ser às 04:43 e é
-  // mesmo a primeira do dia, não uma sobra da noite anterior.
-  const [h0, m0] = route.first[dayType].split(":").map(Number);
-  let t = h0*60 + m0;
-  for (let i = 0; t <= fim && i < 400; i++){
-    out.push(t + offset);
-    const b = banda(t);
-    t += b ? freqMin(b[2]) : 15;
-  }
+  grupos.forEach(g => {
+    let t = g.ini;
+    for (let i = 0; t <= g.fim && i < 400; i++){
+      out.push({min: t, hora: fromMin(t), nome: g.nome, cor: g.cor, urb: true});
+      const b = banda(t);
+      t += b ? freqMin(b[2]) : 15;
+    }
+  });
   return out;
 }
 
@@ -376,46 +374,6 @@ function urbanRoutesFor(station, dirKey){
     const i = r.stops.findIndex(s => s[0] === station);
     return i !== -1 && i < r.stops.length - 1;
   });
-}
-
-function renderUrbanCard(now, station, dirKey, activeType, isToday){
-  const card = document.getElementById("urbCard");
-  const rotas = urbanRoutesFor(station, dirKey);
-  if (rotas.length === 0){ card.hidden = true; return; }
-  card.hidden = false;
-
-  const bands = URBAN_BANDS[activeType];
-  const banda = isToday
-    ? bands.find(b => now >= buildDate(now,b[0]) && now < buildDate(now,b[1]))
-    : null;
-
-  // Duas ligações podem ter o mesmo destino a partir desta paragem (ex.:
-  // em Solum, vindas de Coimbra B e da República). Para quem espera é o
-  // mesmo autocarro, por isso junta-se numa linha só.
-  const ord = t => { const [h,m] = t.split(":").map(Number); return (h<5 ? h+24 : h)*60 + m; };
-  const porDestino = new Map();
-  rotas.forEach(r => {
-    const off = r.stops.find(s => s[0] === station)[1];
-    const p = shiftTime(r.first[activeType], off);
-    const u = shiftTime(r.last[activeType], off);
-    const g = porDestino.get(r.to);
-    if (!g) porDestino.set(r.to, {nome:r.toName, p, u});
-    else {
-      if (ord(p) < ord(g.p)) g.p = p;
-      if (ord(u) > ord(g.u)) g.u = u;
-    }
-  });
-
-  const linhas = [...porDestino].map(([cod, g]) =>
-    `<div class="urbrow">
-      <span class="dest" style="color:${URBAN_COLOR[cod]}">→ ${g.nome}</span>
-      <span class="det">1ª ${g.p} · últ ${g.u}</span>
-    </div>`
-  ).join("");
-
-  card.innerHTML = `<div class="cap"><span>urbana</span><span>${
-    banda ? `a cada <b style="color:var(--ink)">${banda[2]}</b> min · até ${banda[1]}` : "fora de serviço"
-  }</span></div>${linhas}`;
 }
 
 function updateChrome(){
@@ -553,12 +511,7 @@ function render(scrollToNext){
     min: toMin(e[0]), hora: e[0], nome: prefix + NAME[e[mode.field]],
     cor: COLOR[e[mode.field]], urb: false
   }));
-  urbanRoutesFor(currentStation, dirKey).forEach(r => {
-    const off = r.stops.find(s => s[0] === currentStation)[1];
-    urbanDepartures(r, activeType, off).forEach(m => linhas.push({
-      min: m, hora: fromMin(m), nome: r.toName, cor: URBAN_COLOR[r.to], urb: true
-    }));
-  });
+  linhas.push(...urbanSeriesAt(currentStation, dirKey, activeType));
   linhas.sort((a,b) => a.min - b.min || (a.urb - b.urb));
 
   const agora = now.getHours()*60 + now.getMinutes() + (now.getHours() < 5 ? 24*60 : 0);
@@ -589,7 +542,6 @@ function render(scrollToNext){
     }
   }
 
-  renderUrbanCard(now, currentStation, dirKey, activeType, isToday);
 
   const heroLabel = document.getElementById("heroLabel");
   const heroTime = document.getElementById("heroTime");
@@ -607,12 +559,7 @@ function render(scrollToNext){
     min: toMin(e[0]), hora: e[0], nome: todayPrefix + NAME[e[todayMode.field]],
     cor: COLOR[e[todayMode.field]], urb: false
   }));
-  urbanRoutesFor(currentStation, dirKey).forEach(r => {
-    const off = r.stops.find(s => s[0] === currentStation)[1];
-    urbanDepartures(r, todayType, off).forEach(m => hoje.push({
-      min: m, hora: fromMin(m), nome: r.toName, cor: URBAN_COLOR[r.to], urb: true
-    }));
-  });
+  hoje.push(...urbanSeriesAt(currentStation, dirKey, todayType));
   hoje.sort((a,b) => a.min - b.min);
 
   const idx = hoje.findIndex(l => l.min > agora);
