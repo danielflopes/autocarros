@@ -178,6 +178,8 @@
   }
   .urbstop .nome{font-size:0.92rem; font-weight:500;}
   .rowline.past{opacity:0.32;}
+  .rowline.urb .t{color:var(--muted); font-weight:500;}
+  .rowline.urb.next .t{color:var(--c-amber); font-weight:700;}
   .rowline.next{background:rgba(255,183,3,0.06);}
   .rowline.next .t{color:var(--c-amber); font-weight:700;}
   .destchip{font-size:0.76rem; font-weight:600; letter-spacing:.02em; text-align:right;}
@@ -333,6 +335,40 @@ function buildSameDay(baseDate, hhmm){
    As que vão para Vale das Flores afastam-se de Coimbra ("De Coimbra");
    as restantes aproximam-se ("Para Coimbra"). A última paragem de cada
    ligação não conta — aí o autocarro termina, não se apanha. */
+/* Minutos desde as 05:00 do dia de serviço (o que for antes das 5h é
+   madrugada seguinte, como no resto da app). */
+function toMin(t){ const [h,m] = t.split(":").map(Number); return (h < 5 ? h+24 : h)*60 + m; }
+function fromMin(v){
+  const t = ((Math.round(v) % 1440) + 1440) % 1440;
+  return String(Math.floor(t/60)).padStart(2,"0") + ":" + String(t%60).padStart(2,"0");
+}
+// "15" -> 15 ; "5–7,5" -> 6.25 (ponto médio do intervalo publicado)
+function freqMin(v){
+  const p = String(v).split("–").map(x => parseFloat(x.replace(",", ".")));
+  return p.reduce((a,b) => a+b, 0) / p.length;
+}
+
+/* A urbana não publica passagens, publica frequências. Estas horas são
+   geradas: parte-se da 1ª viagem na origem e avança-se pela frequência
+   da banda em que cada partida cai, até à última viagem; depois soma-se
+   o tempo medido até esta paragem. São estimativas — aparecem com "~". */
+function urbanDepartures(route, dayType, offset){
+  const bands = URBAN_BANDS[dayType];
+  const fim = toMin(route.last[dayType]);
+  const banda = m => bands.find(b => m >= toMin(b[0]) && m < toMin(b[1]));
+  const out = [];
+  // A 1ª viagem NÃO leva a regra da madrugada: pode ser às 04:43 e é
+  // mesmo a primeira do dia, não uma sobra da noite anterior.
+  const [h0, m0] = route.first[dayType].split(":").map(Number);
+  let t = h0*60 + m0;
+  for (let i = 0; t <= fim && i < 400; i++){
+    out.push(t + offset);
+    const b = banda(t);
+    t += b ? freqMin(b[2]) : 15;
+  }
+  return out;
+}
+
 function urbanRoutesFor(station, dirKey){
   return URBAN_ROUTES.filter(r => {
     const paraCoimbra = r.to !== "vf";
@@ -510,34 +546,45 @@ function render(scrollToNext){
   // Quando se mostra a origem em vez do destino, o nome sozinho é ambíguo
   // ("Serpins" tanto lê como "vai para" como "vem de"). O prefixo resolve.
   const prefix = mode.field === 2 ? "de " : "";
-  const codes = [...new Set(stationActive.map(e => e[mode.field]))];
-  document.getElementById("legendKeys").innerHTML = codes.map(c =>
-    `<span class="k"><span class="dot" style="background:${COLOR[c]}"></span>${prefix}${NAME[c]}</span>`
+
+  // Uma só tabela: suburbano (horas reais) + urbana (horas geradas, "~"),
+  // por ordem de hora.
+  const linhas = stationActive.map(e => ({
+    min: toMin(e[0]), hora: e[0], nome: prefix + NAME[e[mode.field]],
+    cor: COLOR[e[mode.field]], urb: false
+  }));
+  urbanRoutesFor(currentStation, dirKey).forEach(r => {
+    const off = r.stops.find(s => s[0] === currentStation)[1];
+    urbanDepartures(r, activeType, off).forEach(m => linhas.push({
+      min: m, hora: fromMin(m), nome: r.toName, cor: URBAN_COLOR[r.to], urb: true
+    }));
+  });
+  linhas.sort((a,b) => a.min - b.min || (a.urb - b.urb));
+
+  const agora = now.getHours()*60 + now.getMinutes() + (now.getHours() < 5 ? 24*60 : 0);
+  let nextIdx = -1;
+  if (isToday) nextIdx = linhas.findIndex(l => l.min > agora);
+
+  const legenda = new Map();
+  linhas.forEach(l => legenda.set(l.nome, l.cor));
+  document.getElementById("legendKeys").innerHTML = [...legenda].map(([n,c]) =>
+    `<span class="k"><span class="dot" style="background:${c}"></span>${n}</span>`
   ).join("");
 
-  let nextIdxToday = -1;
-  if (isToday){
-    for (let i=0;i<todaysRows.length;i++){
-      if (todaysRows[i].date > now){ nextIdxToday = i; break; }
-    }
-  }
-
   const listEl = document.getElementById("list");
-  if (stationActive.length === 0){
+  if (linhas.length === 0){
     listEl.innerHTML = '<div class="empty-list">Esta estação não tem serviço neste sentido/dia.</div>';
   } else {
-    listEl.innerHTML = stationActive.map((e, i) => {
-      const code = e[mode.field];
-      const past = isToday && nextIdxToday !== -1 && i < nextIdxToday;
-      const isNext = isToday && i === nextIdxToday;
-      return `<div class="rowline ${past?'past':''} ${isNext?'next':''}">
-        <span class="t">${e[0]}</span>
-        <span class="destchip" style="color:${COLOR[code]}">${prefix}${NAME[code]}</span>
+    listEl.innerHTML = linhas.map((l, i) => {
+      const past = isToday && nextIdx !== -1 && i < nextIdx;
+      return `<div class="rowline ${past?'past':''} ${i===nextIdx?'next':''} ${l.urb?'urb':''}">
+        <span class="t">${l.urb ? "~" : ""}${l.hora}</span>
+        <span class="destchip" style="color:${l.cor}">${l.nome}</span>
       </div>`;
     }).join("");
 
     if (scrollToNext){
-      if (isToday && nextIdxToday !== -1) armSnap(listEl.children[nextIdxToday]);
+      if (nextIdx !== -1) armSnap(listEl.children[nextIdx]);
       else { disarmSnap(); listEl.scrollTop = 0; }
     }
   }
@@ -549,16 +596,26 @@ function render(scrollToNext){
   const heroCountdown = document.getElementById("heroCountdown");
   const heroPill = document.getElementById("heroPill");
 
-  // hero uses TODAY's real schedule, with its own label mode
+  // O hero usa o dia de HOJE, juntando também a urbana — senão anunciava
+  // um autocarro mais tarde do que o que a tabela mostra a seguir.
   const todayMode = labelMode(stationToday);
   const todayPrefix = todayMode.field === 2 ? "de " : "";
-  function pill(entryArr){
-    const c = entryArr[todayMode.field];
-    return `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${todayPrefix}${NAME[c]}</span>`;
-  }
+  const chip = (nome, cor) =>
+    `<span class="pill" style="color:${cor};background:color-mix(in srgb, ${cor} 12%, transparent);border:1px solid color-mix(in srgb, ${cor} 35%, transparent)">${nome}</span>`;
 
-  let idx = -1;
-  for (let i=0;i<todaysRows.length;i++){ if (todaysRows[i].date > now){ idx = i; break; } }
+  const hoje = stationToday.map(e => ({
+    min: toMin(e[0]), hora: e[0], nome: todayPrefix + NAME[e[todayMode.field]],
+    cor: COLOR[e[todayMode.field]], urb: false
+  }));
+  urbanRoutesFor(currentStation, dirKey).forEach(r => {
+    const off = r.stops.find(s => s[0] === currentStation)[1];
+    urbanDepartures(r, todayType, off).forEach(m => hoje.push({
+      min: m, hora: fromMin(m), nome: r.toName, cor: URBAN_COLOR[r.to], urb: true
+    }));
+  });
+  hoje.sort((a,b) => a.min - b.min);
+
+  const idx = hoje.findIndex(l => l.min > agora);
 
   if (idx === -1){
     const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
@@ -576,14 +633,14 @@ function render(scrollToNext){
       heroLabel.textContent = "já não há mais hoje · primeiro amanhã";
       heroTime.textContent = tmrRows[0][0];
       heroCountdown.innerHTML = "";
-      heroPill.innerHTML = `<span class="pill" style="color:${COLOR[c]};background:color-mix(in srgb, ${COLOR[c]} 12%, transparent);border:1px solid color-mix(in srgb, ${COLOR[c]} 35%, transparent)">${tmrPrefix}${NAME[c]}</span>`;
+      heroPill.innerHTML = chip(tmrPrefix + NAME[c], COLOR[c]);
     }
   } else {
-    const nb = todaysRows[idx];
-    heroLabel.textContent = "próximo autocarro";
-    heroTime.textContent = nb.t;
-    heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown(nb.date - now) + "</b>";
-    heroPill.innerHTML = pill([nb.t, nb.dest, nb.orig]);
+    const nb = hoje[idx];
+    heroLabel.textContent = nb.urb ? "próximo autocarro · urbana (estimado)" : "próximo autocarro";
+    heroTime.textContent = (nb.urb ? "~" : "") + nb.hora;
+    heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown((nb.min - agora)*60000) + "</b>";
+    heroPill.innerHTML = chip(nb.nome, nb.cor);
   }
 }
 

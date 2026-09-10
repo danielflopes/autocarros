@@ -7,10 +7,14 @@ o que lá passa, dos dois serviços do Metro Mondego.
   horários fixos embutidos no HTML — dias úteis, sábados, e
   domingos/feriados, 37 paragens, nos dois sentidos. Dá o próximo
   autocarro com contagem decrescente. A paragem fica em `localStorage`.
-- **Urbana** (Coimbra B / República / Vale das Flores): não tem horário
-  fixo por paragem, é por frequência. Nas paragens que serve aparece um
-  cartão com o intervalo em minutos na banda horária atual e, por
-  destino, a 1ª e última viagem estimadas ali. Nas outras não aparece.
+- **Urbana** (Coimbra B / República / Vale das Flores): o operador não
+  publica passagens, publica frequências. As horas da urbana na tabela
+  são por isso **geradas** e aparecem com `~` — parte-se da 1ª viagem na
+  origem, avança-se pela frequência da banda em que cada partida cai até
+  à última viagem, e soma-se o tempo medido até à paragem. Nas bandas
+  com intervalo (ex.: 5–7,5 min) usa-se o ponto médio. Um cartão por
+  cima da tabela resume o intervalo em vigor e a 1ª/última por destino.
+  Nas paragens que a urbana não serve, nada disto aparece.
 
   As estimativas não são inventadas: a âncora (1ª e última viagem na
   origem) vem do horário oficial, e o tempo até cada paragem foi medido
