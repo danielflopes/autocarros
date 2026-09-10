@@ -6,7 +6,10 @@ HTML — dias úteis, sábados, e domingos/feriados, 37 paragens, nos dois
 sentidos.
 
 Mostra o próximo autocarro de uma estação escolhida, com contagem
-decrescente. A estação fica guardada em `localStorage` do browser.
+decrescente. A estação fica guardada em `localStorage` do browser. Ao
+abrir, escolhe sozinha o separador do dia certo (dias úteis / sábado /
+domingo, conforme a data de hoje) e a tabela de horários já vem com scroll
+feito até ao próximo autocarro.
 
 Sem dependências externas a não ser a Google Fonts (cosmético — sem
 internet, cai para as fontes do sistema e funciona na mesma).

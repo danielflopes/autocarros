@@ -308,7 +308,7 @@ async function selectStation(name){
   stationInput.value = name;
   hideResults();
   try { localStorage.setItem("estacao_escolhida", name); } catch(e){}
-  render();
+  render(true);
 }
 
 async function init(){
@@ -324,12 +324,36 @@ async function init(){
   document.getElementById("t" + TYPE_KEYS.indexOf(todayType)).checked = true;
 
   document.querySelectorAll('input[name="dia"], input[name="dir"]')
-    .forEach(r => r.addEventListener("change", render));
-  render();
+    .forEach(r => r.addEventListener("change", () => render(true)));
+  render(true);
   setInterval(render, 20000);
 }
 
-function render(){
+/* Centra a linha do próximo autocarro na lista. Observa essa linha com
+   ResizeObserver porque a Google Font pode carregar depois deste primeiro
+   cálculo e mudar a altura das linhas — sem isto a rolagem ficava
+   desalinhada assim que a fonte trocava. */
+const snapObserver = new ResizeObserver(() => snapNow());
+let snapTarget = null;
+function snapNow(){
+  if (!snapTarget || !snapTarget.isConnected) return;
+  const listEl = document.getElementById("list");
+  const delta = snapTarget.getBoundingClientRect().top - listEl.getBoundingClientRect().top;
+  const top = listEl.scrollTop + delta - listEl.clientHeight/2 + snapTarget.clientHeight/2;
+  listEl.scrollTop = Math.max(0, top);
+}
+function armSnap(target){
+  snapObserver.disconnect();
+  snapTarget = target;
+  snapObserver.observe(target);
+  snapNow();
+}
+function disarmSnap(){
+  snapObserver.disconnect();
+  snapTarget = null;
+}
+
+function render(scrollToNext){
   const now = new Date();
   document.getElementById("clock").textContent =
     now.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
@@ -373,6 +397,11 @@ function render(){
         <span class="destchip" style="color:${COLOR[code]}">${NAME[code]}</span>
       </div>`;
     }).join("");
+
+    if (scrollToNext){
+      if (isToday && nextIdxToday !== -1) armSnap(listEl.children[nextIdxToday]);
+      else { disarmSnap(); listEl.scrollTop = 0; }
+    }
   }
 
   const heroLabel = document.getElementById("heroLabel");
