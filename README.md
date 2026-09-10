@@ -11,9 +11,11 @@ decrescente. A estação fica guardada em `localStorage` do browser.
 Sem dependências externas a não ser a Google Fonts (cosmético — sem
 internet, cai para as fontes do sistema e funciona na mesma).
 
-Tem favicon e ícone para "Adicionar ao ecrã principal" no iOS, embutidos
-como `data:` URI no `<head>` do `index.html` (sem ficheiros extra, para
-manter a página num único ficheiro).
+Tem favicon e ícone para "Adicionar ao ecrã principal" no iOS
+(`apple-touch-icon.png`, `favicon.ico`/`.png`, `manifest.webmanifest`).
+São ficheiros à parte — o iOS não lê `apple-touch-icon` como `data:` URI
+(a primeira tentativa embutida no `index.html` falhou por isso), tem de
+ser um URL real.
 
 ## Atualizar os horários
 
