@@ -43,8 +43,7 @@
   }
   .app{width:100%; max-width:420px;}
 
-  .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
-  .top .brand{font-size:0.95rem; color:var(--muted); font-weight:600;}
+  .top{display:flex; justify-content:flex-end; align-items:center; margin-bottom:14px;}
   .clock{font-family:'IBM Plex Mono', monospace; font-size:0.95rem; color:var(--muted);}
 
   .stationpick{position:relative; margin-bottom:12px;}
@@ -187,7 +186,6 @@
 <div class="app">
 
   <div class="top">
-    <div class="brand" id="brandLabel">Linha Suburbana</div>
     <div class="clock" id="clock">--:--</div>
   </div>
 
@@ -314,7 +312,6 @@ function updateChrome(){
   const urban = isUrban();
   document.getElementById("clock").textContent =
     new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
-  document.getElementById("brandLabel").textContent = urban ? "Linha Urbana" : "Linha Suburbana";
   document.getElementById("stationpick").style.display = urban ? "none" : "";
   document.getElementById("subDirswitch").style.display = urban ? "none" : "";
   document.getElementById("legendRow").style.display = urban ? "none" : "";
