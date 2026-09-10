@@ -170,6 +170,11 @@
     font-family:'IBM Plex Mono', monospace; font-size:1.02rem; font-weight:500;
     font-variant-numeric: tabular-nums;
   }
+  .urbsep{
+    justify-content:space-between; font-size:0.7rem; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.06em; background:rgba(255,255,255,0.02);
+  }
+  .urbstop .nome{font-size:0.92rem; font-weight:500;}
   .rowline.past{opacity:0.32;}
   .rowline.next{background:rgba(255,183,3,0.06);}
   .rowline.next .t{color:var(--c-amber); font-weight:700;}
@@ -268,19 +273,33 @@ const URBAN_BANDS = {
   domingos: [["05:00","07:30","15"], ["07:30","19:00","15"], ["19:00","00:40","15"]]
 };
 const URBAN_COLOR = {cb:"var(--c-amber)", rp:"var(--c-teal)", vf:"var(--c-violet)"};
+/* stops: [paragem, minutos desde a origem].
+   Os minutos n\u00e3o s\u00e3o inventados \u2014 foram medidos nas viagens reais do
+   FULL_DATA (o tro\u00e7o urbano \u00e9 o mesmo corredor do suburbano, as paragens
+   sobrep\u00f5em-se), usando a mediana de todas as viagens de dias \u00fateis.
+   Coimbra B e Rep\u00fablica s\u00e3o dois ramos que s\u00f3 se juntam na Portagem, por
+   isso as liga\u00e7\u00f5es entre eles passam l\u00e1 \u2014 o tro\u00e7o direto (Sereia, Celas,
+   Polo Ci\u00eancias, Pedi\u00e1trico, Hospitais) ainda est\u00e1 em constru\u00e7\u00e3o e a
+   Rep\u00fablica \u00e9 a \u00faltima paragem funcional nesse sentido. */
 const URBAN_ROUTES = [
   {from:"cb", to:"vf", label:"Coimbra B \u2192 V. Flores", toName:"Vale das Flores",
-   first:{uteis:"05:05",sabados:"06:05",domingos:"06:05"}, last:{uteis:"00:08",sabados:"00:30",domingos:"00:30"}},
+   first:{uteis:"05:05",sabados:"06:05",domingos:"06:05"}, last:{uteis:"00:08",sabados:"00:30",domingos:"00:30"},
+   stops:[["Coimbra B",0],["Casa do Sal",1],["A\u00e7ude",2],["Arnado",4],["Aeminium",5],["Portagem",6],["Parque",7],["Col\u00e9gios",9],["Arrega\u00e7a",10],["Norton de Matos",11],["S\u00e3o Jos\u00e9",12],["Solum",14],["Fernando Namora",15],["Casa Branca",17],["Vale das Flores",18]]},
   {from:"vf", to:"cb", label:"V. Flores \u2192 Coimbra B", toName:"Coimbra B",
-   first:{uteis:"04:43",sabados:"06:37",domingos:"07:32"}, last:{uteis:"23:32",sabados:"00:04",domingos:"00:02"}},
+   first:{uteis:"04:43",sabados:"06:37",domingos:"07:32"}, last:{uteis:"23:32",sabados:"00:04",domingos:"00:02"},
+   stops:[["Vale das Flores",0],["Casa Branca",2],["Fernando Namora",3],["Solum",4],["S\u00e3o Jos\u00e9",6],["Norton de Matos",7],["Arrega\u00e7a",8],["Col\u00e9gios",9],["Parque",11],["Portagem",12],["Aeminium",14],["Arnado",15],["A\u00e7ude",16],["Casa do Sal",17],["Coimbra B",19]]},
   {from:"rp", to:"vf", label:"Rep\u00fablica \u2192 V. Flores", toName:"Vale das Flores",
-   first:{uteis:"06:35",sabados:"06:40",domingos:"07:35"}, last:{uteis:"00:22",sabados:"00:40",domingos:"00:40"}},
+   first:{uteis:"06:35",sabados:"06:40",domingos:"07:35"}, last:{uteis:"00:22",sabados:"00:40",domingos:"00:40"},
+   stops:[["Rep\u00fablica",0],["Mercado",2],["C\u00e2mara",3],["Loja do Cidad\u00e3o",4],["Portagem",6],["Parque",7],["Col\u00e9gios",9],["Arrega\u00e7a",10],["Norton de Matos",11],["S\u00e3o Jos\u00e9",12],["Solum",14],["Fernando Namora",15],["Casa Branca",16],["Vale das Flores",18]]},
   {from:"vf", to:"rp", label:"V. Flores \u2192 Rep\u00fablica", toName:"Rep\u00fablica",
-   first:{uteis:"05:47",sabados:"06:00",domingos:"06:00"}, last:{uteis:"00:02",sabados:"23:49",domingos:"23:02"}},
+   first:{uteis:"05:47",sabados:"06:00",domingos:"06:00"}, last:{uteis:"00:02",sabados:"23:49",domingos:"23:02"},
+   stops:[["Vale das Flores",0],["Casa Branca",2],["Fernando Namora",3],["Solum",4],["S\u00e3o Jos\u00e9",6],["Norton de Matos",7],["Arrega\u00e7a",8],["Col\u00e9gios",9],["Parque",11],["Portagem",12],["Loja do Cidad\u00e3o",14],["C\u00e2mara",15],["Mercado",16],["Rep\u00fablica",17]]},
   {from:"rp", to:"cb", label:"Rep\u00fablica \u2192 Coimbra B", toName:"Coimbra B",
-   first:{uteis:"05:45",sabados:"06:56",domingos:"06:40"}, last:{uteis:"00:13",sabados:"00:00",domingos:"00:05"}},
+   first:{uteis:"05:45",sabados:"06:56",domingos:"06:40"}, last:{uteis:"00:13",sabados:"00:00",domingos:"00:05"},
+   stops:[["Rep\u00fablica",0],["Mercado",2],["C\u00e2mara",3],["Loja do Cidad\u00e3o",4],["Portagem",6],["Aeminium",8],["Arnado",9],["A\u00e7ude",10],["Casa do Sal",11],["Coimbra B",13]]},
   {from:"cb", to:"rp", label:"Coimbra B \u2192 Rep\u00fablica", toName:"Rep\u00fablica",
-   first:{uteis:"05:25",sabados:"06:23",domingos:"06:23"}, last:{uteis:"23:44",sabados:"00:15",domingos:"00:18"}}
+   first:{uteis:"05:25",sabados:"06:23",domingos:"06:23"}, last:{uteis:"23:44",sabados:"00:15",domingos:"00:18"},
+   stops:[["Coimbra B",0],["Casa do Sal",1],["A\u00e7ude",2],["Arnado",4],["Aeminium",5],["Portagem",6],["Loja do Cidad\u00e3o",8],["C\u00e2mara",9],["Mercado",10],["Rep\u00fablica",11]]}
 ];
 let urbRouteIdx = 0;
 
@@ -302,6 +321,12 @@ function buildDate(baseDate, hhmm){
 // Igual a buildDate mas sem o "passa para amanh\u00e3 se for madrugada" \u2014 usa-se
 // para a 1\u00aa viagem da Urbana, que pode ser bem cedo (ex.: 04:43) e continua
 // a ser a viagem de hoje, n\u00e3o de amanh\u00e3.
+// "05:05" + 13 -> "05:18" (dá a volta à meia-noite)
+function shiftTime(hhmm, delta){
+  const [h,m] = hhmm.split(":").map(Number);
+  const t = ((h*60 + m + delta) % 1440 + 1440) % 1440;
+  return String(Math.floor(t/60)).padStart(2,"0") + ":" + String(t%60).padStart(2,"0");
+}
 function buildSameDay(baseDate, hhmm){
   const [h,m] = hhmm.split(":").map(Number);
   const d = new Date(baseDate);
@@ -586,12 +611,22 @@ function renderUrban(scrollToNext){
     </div>`;
 
   const rows = [];
-  rows.push(rowHtml(route.first[activeType], "1ª viagem", false));
   bandsActive.forEach(b => {
     const active = isToday && now >= buildDate(now,b[0]) && now < buildDate(now,b[1]);
     rows.push(rowHtml(`${b[0]} – ${b[1]}`, "a cada " + b[2] + " min", active));
   });
-  rows.push(rowHtml(route.last[activeType], "última viagem", false));
+
+  // 1ª e última viagem estimadas em cada paragem: âncora real na origem
+  // (PDF) + tempo medido nas viagens do suburbano.
+  rows.push(`<div class="rowline urbsep"><span>paragem</span><span>1ª · última</span></div>`);
+  route.stops.forEach(([nome, off]) => {
+    const p = shiftTime(route.first[activeType], off);
+    const u = shiftTime(route.last[activeType], off);
+    rows.push(`<div class="rowline urbstop">
+      <span class="nome">${nome}</span>
+      <span class="destchip" style="color:${color}">${p} · ${u}</span>
+    </div>`);
+  });
 
   const listEl = document.getElementById("list");
   listEl.innerHTML = rows.join("");

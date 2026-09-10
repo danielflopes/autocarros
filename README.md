@@ -10,9 +10,19 @@ seletor "Suburbana / Urbana" no topo:
   estação fica guardada em `localStorage`.
 - **Urbana** (triângulo Coimbra B / República / Vale das Flores, 6
   ligações direcionais): não tem horário fixo por paragem, é por
-  frequência — mostra 1ª/última viagem e o intervalo em minutos por
-  banda horária (madrugada / dia / noite), com a banda atual destacada.
-  A linha escolhida fica guardada em `localStorage`.
+  frequência — mostra o intervalo em minutos por banda horária
+  (madrugada / dia / noite), com a banda atual destacada, e a 1ª e
+  última viagem **estimadas em cada paragem** do percurso. A linha
+  escolhida fica guardada em `localStorage`.
+
+  As estimativas não são inventadas: a âncora (1ª e última viagem na
+  origem) vem do horário oficial, e o tempo até cada paragem seguinte
+  foi medido nas viagens reais do `FULL_DATA` — o troço urbano usa o
+  mesmo corredor do suburbano, as paragens sobrepõem-se. Coimbra B e
+  República são dois ramos que só se juntam na Portagem; o troço direto
+  entre eles (Sereia, Celas, Polo Ciências da Saúde, Pediátrico,
+  Hospitais) ainda está em construção, sendo a República a última
+  paragem funcional nesse sentido.
 
 Ao abrir, a app escolhe sozinha o separador do dia certo (dias úteis /
 sábado / domingo, conforme a data de hoje) e, na Suburbana, a tabela já
