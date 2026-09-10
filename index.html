@@ -24,9 +24,14 @@
     --line: rgba(255,255,255,0.09);
     --ink: #eef2f0;
     --muted: #7c8985;
-    --c-amber: #ffb703;
-    --c-teal: #34d1c0;
-    --c-violet: #a98bfa;
+    /* uma cor por destino — ver COLOR / URBAN_COLOR */
+    --c-amber: #ffb703;   /* Coimbra B */
+    --c-teal: #34d1c0;    /* República */
+    --c-violet: #a98bfa;  /* Vale das Flores */
+    --c-rose: #ff7597;    /* Serpins */
+    --c-blue: #5b9dff;    /* Lousã */
+    --c-green: #6fd964;   /* Corvo */
+    --c-orange: #ff8c42;  /* Miranda do Corvo */
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
   html,body{height:100%;}
@@ -235,7 +240,7 @@ const STATIONS = ["Coimbra B","Casa do Sal","Açude","Arnado","Aeminium","Repúb
 const DEFAULT_STATION = "Portela";
 
 const NAME = {cb:"Coimbra B", rp:"República", se:"Serpins", lo:"Lousã", co:"Corvo", mc:"Miranda do Corvo"};
-const COLOR = {cb:"var(--c-amber)", rp:"var(--c-teal)", se:"var(--c-amber)", lo:"var(--c-teal)", co:"var(--c-violet)", mc:"var(--c-violet)"};
+const COLOR = {cb:"var(--c-amber)", rp:"var(--c-teal)", se:"var(--c-rose)", lo:"var(--c-blue)", co:"var(--c-green)", mc:"var(--c-orange)"};
 
 const TYPE_KEYS = ["uteis","sabados","domingos"];
 const DAY_LABEL = ["domingos","uteis","uteis","uteis","uteis","uteis","sabados"];
