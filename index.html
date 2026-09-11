@@ -340,13 +340,15 @@ function urbanSeriesAt(station, dirKey, dayType){
   return out;
 }
 
-/* Uma passagem urbana estimada que caia a 2 minutos ou menos de um
-   horário real do suburbano é quase de certeza o mesmo autocarro contado
-   duas vezes — e entre os dois vale o horário real, não a estimativa.
-   Descarta-se a estimativa. */
-const TOL_MIN = 2;
+/* A frequência mais apertada que a urbana publica são 5 minutos. Como o
+   número publicado descreve tudo o que passa na paragem (ver
+   urbanSeriesAt), nada lá passa a menos de 5 minutos do anterior — por
+   isso uma passagem estimada tão perto de um horário real do suburbano é
+   o mesmo autocarro contado duas vezes. Descarta-se a estimativa, que
+   entre as duas é a que vale menos. */
+const INTERVALO_MIN = 5;
 function semDuplicadosDoSuburbano(urb, sub){
-  return urb.filter(u => !sub.some(s => Math.abs(s.min - u.min) <= TOL_MIN));
+  return urb.filter(u => !sub.some(s => Math.abs(s.min - u.min) < INTERVALO_MIN));
 }
 
 function urbanRoutesFor(station, dirKey){
