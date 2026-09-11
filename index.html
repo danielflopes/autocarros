@@ -364,12 +364,24 @@ function urbanSeriesAt(station, dirKey, dayType){
   grupos.forEach(g => {
     let t = g.ini;
     for (let i = 0; t <= g.fim && i < 400; i++){
-      out.push({min: t, hora: fromMin(t), nome: g.nome, cor: g.cor, urb: true});
+      // acumula-se em fracções (a banda de 5–7,5 anda de 6,25 em 6,25),
+      // mas guarda-se o minuto inteiro que vai aparecer no ecrã — senão
+      // comparações como a do TOL_MIN usavam números invisíveis
+      out.push({min: Math.round(t), hora: fromMin(t), nome: g.nome, cor: g.cor, urb: true});
       const b = banda(t);
       t += b ? freqMin(b[2]) : 15;
     }
   });
   return out;
+}
+
+/* Uma passagem urbana estimada que caia a 2 minutos ou menos de um
+   horário real do suburbano é quase de certeza o mesmo autocarro contado
+   duas vezes — e entre os dois vale o horário real, não a estimativa.
+   Descarta-se a estimativa. */
+const TOL_MIN = 2;
+function semDuplicadosDoSuburbano(urb, sub){
+  return urb.filter(u => !sub.some(s => Math.abs(s.min - u.min) <= TOL_MIN));
 }
 
 function urbanRoutesFor(station, dirKey){
@@ -516,7 +528,7 @@ function render(scrollToNext){
     min: toMin(e[0]), hora: e[0], nome: prefix + NAME[e[mode.field]],
     cor: COLOR[e[mode.field]], urb: false
   }));
-  linhas.push(...urbanSeriesAt(currentStation, dirKey, activeType));
+  linhas.push(...semDuplicadosDoSuburbano(urbanSeriesAt(currentStation, dirKey, activeType), linhas));
   linhas.sort((a,b) => a.min - b.min || (a.urb - b.urb));
 
   const agora = now.getHours()*60 + now.getMinutes() + (now.getHours() < 5 ? 24*60 : 0);
@@ -564,7 +576,7 @@ function render(scrollToNext){
     min: toMin(e[0]), hora: e[0], nome: todayPrefix + NAME[e[todayMode.field]],
     cor: COLOR[e[todayMode.field]], urb: false
   }));
-  hoje.push(...urbanSeriesAt(currentStation, dirKey, todayType));
+  hoje.push(...semDuplicadosDoSuburbano(urbanSeriesAt(currentStation, dirKey, todayType), hoje));
   hoje.sort((a,b) => a.min - b.min);
 
   const idx = hoje.findIndex(l => l.min > agora);

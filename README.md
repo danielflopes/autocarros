@@ -24,6 +24,10 @@ o que lá passa, dos dois serviços do Metro Mondego.
   passa naquela paragem venha de onde vier. Contar as duas séries em
   separado duplicava o mesmo autocarro.
 
+  Pela mesma razão, uma passagem estimada que caia a 2 minutos ou menos
+  de um horário real do suburbano é descartada: entre uma estimativa e um
+  horário publicado à mesma hora, vale o publicado.
+
   As estimativas não são inventadas: a âncora (1ª e última viagem na
   origem) vem do horário oficial, e o tempo até cada paragem foi medido
   nas viagens reais do `FULL_DATA` — a urbana corre no mesmo corredor do
