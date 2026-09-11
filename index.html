@@ -140,15 +140,6 @@
   #t2:checked ~ .segmented label[for="t2"]{
     background:var(--panel-2); color:var(--ink); font-weight:600;
   }
-  .legend{
-    display:flex; justify-content:space-between; align-items:center; gap:10px;
-    font-size:0.76rem; color:var(--muted); margin:2px 4px 12px;
-  }
-  .legend .keys{display:flex; gap:14px; flex-wrap:wrap;}
-  .legend span.k{display:inline-flex; align-items:center; gap:6px;}
-  .dot{width:8px; height:8px; border-radius:50%; flex:none;}
-  #legendWord{flex:none;}
-
   .board{background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden;}
   .list{max-height:min(42vh, 340px); overflow-y:auto;}
   .rowline{
@@ -220,11 +211,6 @@
     <label for="t2">Dom. / Fer.</label>
   </div>
 
-  <div class="legend" id="legendRow">
-    <div class="keys" id="legendKeys"></div>
-    <span id="legendWord">destino</span>
-  </div>
-
   <div class="board"><div class="list" id="list"></div></div>
 
   <div class="foot">Metro Mondego · Linhas Suburbana e Urbana<br>Horários válidos desde 10 de setembro de 2026</div>
@@ -293,28 +279,6 @@ function isChegada(){ return document.getElementById("dirA").checked; }
 function currentDirKey(){ return isChegada() ? "chegada" : "partida"; }
 function norm(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 
-function buildDate(baseDate, hhmm){
-  const [h,m] = hhmm.split(":").map(Number);
-  const d = new Date(baseDate);
-  if (h < 5) d.setDate(d.getDate() + 1);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-// Igual a buildDate mas sem o "passa para amanh\u00e3 se for madrugada" \u2014 usa-se
-// para a 1\u00aa viagem da Urbana, que pode ser bem cedo (ex.: 04:43) e continua
-// a ser a viagem de hoje, n\u00e3o de amanh\u00e3.
-// "05:05" + 13 -> "05:18" (dá a volta à meia-noite)
-function shiftTime(hhmm, delta){
-  const [h,m] = hhmm.split(":").map(Number);
-  const t = ((h*60 + m + delta) % 1440 + 1440) % 1440;
-  return String(Math.floor(t/60)).padStart(2,"0") + ":" + String(t%60).padStart(2,"0");
-}
-function buildSameDay(baseDate, hhmm){
-  const [h,m] = hhmm.split(":").map(Number);
-  const d = new Date(baseDate);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
 /* Ligações urbanas que servem esta paragem neste sentido.
    As que vão para Vale das Flores afastam-se de Coimbra ("De Coimbra");
    as restantes aproximam-se ("Para Coimbra"). A última paragem de cada
@@ -411,12 +375,12 @@ function fmtCountdown(ms){
    destination (e.g. at Coimbra B every trip ends at Coimbra B), that tells
    you nothing — show where the bus comes from instead. */
 function labelMode(entries){
-  if (entries.length === 0) return {field: 1, word: "destino"};
+  if (entries.length === 0) return {field: 1};
   const dests = new Set(entries.map(e => e[1]));
-  if (dests.size > 1) return {field: 1, word: "destino"};
+  if (dests.size > 1) return {field: 1};
   const origs = new Set(entries.map(e => e[2]));
-  if (origs.size > 1) return {field: 2, word: "vem de"};
-  return {field: 1, word: "destino"};
+  if (origs.size > 1) return {field: 2};
+  return {field: 1};
 }
 
 const stationInput = document.getElementById("stationInput");
@@ -513,12 +477,9 @@ function render(scrollToNext){
 
   const stationActive = FULL_DATA[activeType][dirKey][currentStation] || [];
   const stationToday  = FULL_DATA[todayType][dirKey][currentStation] || [];
-  const todaysRows = stationToday.map(e => ({t:e[0], dest:e[1], orig:e[2], date: buildDate(now, e[0])}));
 
   const mode = labelMode(stationActive);
-  document.getElementById("legendWord").textContent = mode.word;
 
-  // legend shows only the labels that actually appear here
   // Quando se mostra a origem em vez do destino, o nome sozinho é ambíguo
   // ("Serpins" tanto lê como "vai para" como "vem de"). O prefixo resolve.
   const prefix = mode.field === 2 ? "de " : "";
@@ -535,12 +496,6 @@ function render(scrollToNext){
   const agora = now.getHours()*60 + now.getMinutes() + (now.getHours() < 5 ? 24*60 : 0);
   let nextIdx = -1;
   if (isToday) nextIdx = linhas.findIndex(l => l.min > agora);
-
-  const legenda = new Map();
-  linhas.forEach(l => legenda.set(l.nome, l.cor));
-  document.getElementById("legendKeys").innerHTML = [...legenda].map(([n,c]) =>
-    `<span class="k"><span class="dot" style="background:${c}"></span>${n}</span>`
-  ).join("");
 
   const listEl = document.getElementById("list");
   if (linhas.length === 0){
