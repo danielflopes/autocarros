@@ -331,7 +331,7 @@ function urbanSeriesAt(station, dirKey, dayType){
     for (let i = 0; t <= g.fim && i < 400; i++){
       // acumula-se em fracções (a banda de 5–7,5 anda de 6,25 em 6,25),
       // mas guarda-se o minuto inteiro que vai aparecer no ecrã — senão
-      // comparações como a do TOL_MIN usavam números invisíveis
+      // comparações como a do INTERVALO_MIN usavam números invisíveis
       out.push({min: Math.round(t), hora: fromMin(t), nome: g.nome, cor: g.cor, urb: true});
       const b = banda(t);
       t += b ? freqMin(b[2]) : 15;
