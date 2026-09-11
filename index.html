@@ -160,14 +160,12 @@
     font-family:'IBM Plex Mono', monospace; font-size:1.02rem; font-weight:500;
     font-variant-numeric: tabular-nums;
   }
-  .urbsep{
-    justify-content:space-between; font-size:0.7rem; color:var(--muted);
-    text-transform:uppercase; letter-spacing:.06em; background:rgba(255,255,255,0.02);
+  /* a hora estimada lê-se igual à publicada; só leva esta marca ao lado */
+  .rowline .est{
+    font-family:'Work Sans', sans-serif; font-size:0.62rem; font-weight:500;
+    color:var(--muted); margin-left:6px; letter-spacing:0;
   }
-  .urbstop .nome{font-size:0.92rem; font-weight:500;}
   .rowline.past{opacity:0.32;}
-  .rowline.urb .t{color:var(--muted); font-weight:500;}
-  .rowline.urb.next .t{color:var(--c-amber); font-weight:700;}
   .rowline.next{background:rgba(255,183,3,0.06);}
   .rowline.next .t{color:var(--c-amber); font-weight:700;}
   .destchip{font-size:0.76rem; font-weight:600; letter-spacing:.02em; text-align:right;}
@@ -324,6 +322,9 @@ function buildSameDay(baseDate, hhmm){
 /* Minutos desde as 05:00 do dia de serviço (o que for antes das 5h é
    madrugada seguinte, como no resto da app). */
 function toMin(t){ const [h,m] = t.split(":").map(Number); return (h < 5 ? h+24 : h)*60 + m; }
+// os dados do suburbano trazem "9:00"; as estimativas saem "09:00" — com a
+// mesma identidade visual, a coluna só alinha se todas tiverem dois dígitos
+function hhmm(t){ const [h,m] = t.split(":"); return h.padStart(2,"0") + ":" + m; }
 function fromMin(v){
   const t = ((Math.round(v) % 1440) + 1440) % 1440;
   return String(Math.floor(t/60)).padStart(2,"0") + ":" + String(t%60).padStart(2,"0");
@@ -336,7 +337,7 @@ function freqMin(v){
 
 /* A urbana não publica passagens, publica frequências. Estas horas são
    geradas: parte-se da 1ª viagem, avança-se pela frequência da banda em
-   que cada partida cai, até à última. São estimativas — aparecem com "~".
+   que cada partida cai, até à última. São estimativas — levam "(est.)".
 
    Uma paragem pode ser servida por mais do que uma ligação com o mesmo
    destino (em Colégios, para Vale das Flores, vindas de Coimbra B e da
@@ -522,10 +523,10 @@ function render(scrollToNext){
   // ("Serpins" tanto lê como "vai para" como "vem de"). O prefixo resolve.
   const prefix = mode.field === 2 ? "de " : "";
 
-  // Uma só tabela: suburbano (horas reais) + urbana (horas geradas, "~"),
+  // Uma só tabela: suburbano (horas reais) + urbana (geradas, "(est.)"),
   // por ordem de hora.
   const linhas = stationActive.map(e => ({
-    min: toMin(e[0]), hora: e[0], nome: prefix + NAME[e[mode.field]],
+    min: toMin(e[0]), hora: hhmm(e[0]), nome: prefix + NAME[e[mode.field]],
     cor: COLOR[e[mode.field]], urb: false
   }));
   linhas.push(...semDuplicadosDoSuburbano(urbanSeriesAt(currentStation, dirKey, activeType), linhas));
@@ -548,7 +549,7 @@ function render(scrollToNext){
     listEl.innerHTML = linhas.map((l, i) => {
       const past = isToday && nextIdx !== -1 && i < nextIdx;
       return `<div class="rowline ${past?'past':''} ${i===nextIdx?'next':''} ${l.urb?'urb':''}">
-        <span class="t">${l.urb ? "~" : ""}${l.hora}</span>
+        <span class="t">${l.hora}${l.urb ? '<span class="est">(est.)</span>' : ""}</span>
         <span class="destchip" style="color:${l.cor}">${l.nome}</span>
       </div>`;
     }).join("");
@@ -573,7 +574,7 @@ function render(scrollToNext){
     `<span class="pill" style="color:${cor};background:color-mix(in srgb, ${cor} 12%, transparent);border:1px solid color-mix(in srgb, ${cor} 35%, transparent)">${nome}</span>`;
 
   const hoje = stationToday.map(e => ({
-    min: toMin(e[0]), hora: e[0], nome: todayPrefix + NAME[e[todayMode.field]],
+    min: toMin(e[0]), hora: hhmm(e[0]), nome: todayPrefix + NAME[e[todayMode.field]],
     cor: COLOR[e[todayMode.field]], urb: false
   }));
   hoje.push(...semDuplicadosDoSuburbano(urbanSeriesAt(currentStation, dirKey, todayType), hoje));
@@ -595,14 +596,14 @@ function render(scrollToNext){
       const c = tmrRows[0][tmrMode.field];
       const tmrPrefix = tmrMode.field === 2 ? "de " : "";
       heroLabel.textContent = "já não há mais hoje · primeiro amanhã";
-      heroTime.textContent = tmrRows[0][0];
+      heroTime.textContent = hhmm(tmrRows[0][0]);
       heroCountdown.innerHTML = "";
       heroPill.innerHTML = chip(tmrPrefix + NAME[c], COLOR[c]);
     }
   } else {
     const nb = hoje[idx];
     heroLabel.textContent = nb.urb ? "próximo autocarro · urbana (estimado)" : "próximo autocarro";
-    heroTime.textContent = (nb.urb ? "~" : "") + nb.hora;
+    heroTime.textContent = nb.hora;
     heroCountdown.innerHTML = "daqui a <b>" + fmtCountdown((nb.min - agora)*60000) + "</b>";
     heroPill.innerHTML = chip(nb.nome, nb.cor);
   }

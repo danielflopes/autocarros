@@ -9,11 +9,11 @@ o que lá passa, dos dois serviços do Metro Mondego.
   autocarro com contagem decrescente. A paragem fica em `localStorage`.
 - **Urbana** (Coimbra B / República / Vale das Flores): o operador não
   publica passagens, publica frequências. As horas da urbana na tabela
-  são por isso **geradas** e aparecem com `~` — parte-se da 1ª viagem na
+  são por isso **geradas** e aparecem com `(est.)` — parte-se da 1ª viagem na
   origem, avança-se pela frequência da banda em que cada partida cai até
   à última viagem, e soma-se o tempo medido até à paragem. Nas bandas
   com intervalo (ex.: 5–7,5 min) usa-se o ponto médio. Nas paragens que
-  a urbana não serve não aparece nenhuma linha `~`.
+  a urbana não serve não aparece nenhuma linha `(est.)`.
 
   Uma paragem do tronco comum é servida por duas ligações com o mesmo
   destino (Colégios, para Vale das Flores, recebe as de Coimbra B e as
