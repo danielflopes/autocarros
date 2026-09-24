@@ -50,9 +50,18 @@ pena voltar a correr isto quando o ficheiro no dados.gov.pt for renovado.
 ## Regras e simplificações
 
 - Só horários programados, sem tempo real.
-- A pé: distância em linha reta × 1,3, a 1,2 m/s. Paragens candidatas junto
-  à origem/destino: até 800 m (até 2,5 km se não houver nenhuma).
-  Transbordo a pé entre paragens: até 300 m.
+- A pé, **percursos reais** (rio, linha férrea, escadas...) calculados com o
+  OSRM do OpenStreetMap (servidor público FOSSGIS, perfil "foot"):
+  - origem/destino → paragens: um pedido por pesquisa, feito no browser, às
+    40 paragens mais próximas (até 15 min a pé). Se o servidor falhar, a app
+    avisa e estima em linha reta (×1,3, 1,2 m/s), que pode atravessar o rio.
+  - transbordos a pé entre paragens (até 300 m em linha reta, até 8 min a
+    pé): calculados uma vez em `build_data.py` e guardados no JSON. A cache
+    fica em `scripts/.cache/` (fora do git) e o script só pede o que falta.
+  - O servidor público atrasa ~9 s os pedidos seguidos e responde 429 se
+    abusarem, por isso o build é lento (dezenas de minutos) mas só é preciso
+    repetir se as paragens mudarem. O percurso desenhado no mapa é um pedido
+    por troço a pé, em fila.
 - Margem de 60 s ao trocar de autocarro na mesma paragem.
 - Até 4 transbordos.
 - Rotas de recolha da SMTUC (deslocações para a garagem) são ignoradas.

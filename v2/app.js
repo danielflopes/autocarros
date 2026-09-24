@@ -134,6 +134,75 @@
     input.addEventListener('focus', function () { input.select(); });
   }
 
+  // ---- percursos a pé reais (OSRM, perfil "foot", servidor do OpenStreetMap) --
+  var FOOT_TABLE = 'https://routing.openstreetmap.de/routed-foot/table/v1/foot/';
+  var FOOT_ROUTE = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
+  var MAX_WALK = 900;   // s: até 15 min a pé até uma paragem
+
+  function fetchJson(url, ms) {
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, ms);
+    return fetch(url, { signal: ctrl.signal }).then(function (r) {
+      clearTimeout(t);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }, function (e) { clearTimeout(t); throw e; });
+  }
+  function xy(p) { return p.lon.toFixed(6) + ',' + p.lat.toFixed(6); }
+
+  // Um só pedido com origem e destino como "sources": tempo e distância a pé de cada um
+  // às suas paragens candidatas, e de um ao outro. (O servidor público atrasa ~9 s os
+  // pedidos seguidos, por isso é um pedido por pesquisa.)
+  function walkTimes(from, to) {
+    var A = net.candidates(from.lat, from.lon), B = net.candidates(to.lat, to.lon);
+    var pts = [from, to].concat(A.map(function (id) { return net.stops[id]; }),
+      B.map(function (id) { return net.stops[id]; }));
+    var url = FOOT_TABLE + pts.map(xy).join(';') + '?sources=0;1&destinations=' +
+      pts.slice(1).map(function (_, i) { return i + 1; }).join(';') + '&annotations=duration,distance';
+    return fetchJson(url, 15000).then(function (d) {
+      if (d.code !== 'Ok') throw new Error(d.code);
+      // colunas de destinos: 0 = "to", 1..A.length = A, depois B
+      function pick(row, ids, offset) {
+        var items = [];
+        ids.forEach(function (id, i) {
+          var secs = d.durations[row][offset + i];
+          if (secs != null) items.push({ stop: id, secs: Math.round(secs), m: d.distances[row][offset + i] });
+        });
+        var near = items.filter(function (it) { return it.secs <= MAX_WALK; });
+        if (!near.length) {   // nada perto a pé: aceita as mais próximas, até 40 min
+          near = items.filter(function (it) { return it.secs <= 2400; })
+            .sort(function (x, y) { return x.secs - y.secs; }).slice(0, 5);
+        }
+        return near;
+      }
+      var dsecs = d.durations[0][0];
+      return {
+        access: pick(0, A, 1),
+        egress: pick(1, B, 1 + A.length),
+        direct: dsecs == null ? null : { secs: Math.round(dsecs), m: Math.round(d.distances[0][0]) }
+      };
+    });
+  }
+
+  // Linha do percurso a pé para o mapa. Pedidos em fila (o servidor público atrasa os
+  // seguidos), só para o itinerário que está no mapa, e guardados para não repetir.
+  var geomCache = {}, geomQueue = Promise.resolve();
+  function walkGeom(a, b, stillWanted) {
+    var k = xy(a) + ';' + xy(b);
+    if (geomCache[k]) return Promise.resolve(geomCache[k]);
+    var p = geomQueue.then(function () {
+      if (geomCache[k]) return geomCache[k];
+      if (!stillWanted()) throw new Error('stale');
+      return fetchJson(FOOT_ROUTE + k + '?overview=full&geometries=geojson', 20000).then(function (d) {
+        if (d.code !== 'Ok') throw new Error(d.code);
+        geomCache[k] = d.routes[0].geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+        return geomCache[k];
+      });
+    });
+    geomQueue = p.catch(function () {});
+    return p;
+  }
+
   // ---- estado guardado --------------------------------------------------
   function save() {
     try { localStorage.setItem('aut2:last', JSON.stringify({ from: state.from, to: state.to })); } catch (e) { /* sem storage */ }
@@ -184,7 +253,7 @@
   }
 
   // ---- mapa -------------------------------------------------------------
-  var map = null, layer = null;
+  var map = null, layer = null, drawToken = 0;
   function ensureMap() {
     if (map || typeof L === 'undefined') return map;
     map = L.map('map', { zoomControl: false, attributionControl: true }).setView([40.2033, -8.4103], 13);
@@ -200,12 +269,20 @@
     $('map').classList.add('show');
     map.invalidateSize();
     layer.clearLayers();
-    var pts = [];
+    var pts = [], token = ++drawToken;
     j.legs.forEach(function (l) {
       if (l.type === 'walk') {
         var a = [l.from.lat, l.from.lon], b = [l.to.lat, l.to.lon];
-        L.polyline([a, b], { color: '#9aa5a1', weight: 3, dashArray: '2 6', opacity: .9 }).addTo(layer);
         pts.push(a, b);
+        var style = { color: '#9aa5a1', weight: 3, dashArray: '2 6', opacity: .9 };
+        // provisório (linha reta, esbatida) até chegar o percurso real
+        var temp = L.polyline([a, b], { color: '#9aa5a1', weight: 2, dashArray: '1 8', opacity: .45 }).addTo(layer);
+        walkGeom(l.from, l.to, function () { return token === drawToken; }).then(function (line) {
+          if (token !== drawToken) return;
+          layer.removeLayer(temp);
+          var real = L.polyline(line, style).addTo(layer);
+          real.bringToBack();
+        }).catch(function () { /* fica a linha provisória */ });
       } else {
         var line = l.stops.map(function (s) { return [s.lat, s.lon]; });
         var c = l.route.type === 7 ? '#5b9dff' : l.route.color;
@@ -267,6 +344,10 @@
       var f = net.smtucFeed;
       banner.innerHTML = '<div class="warn">A SMTUC não tem horários publicados para esta data (o ficheiro cobre ' +
         fmtYmd(f.start) + ' a ' + fmtYmd(f.end) + '). Só aparecem serviços do Metro Mondego.</div>';
+    }
+    if (res.estimated) {
+      banner.innerHTML += '<div class="warn">Não consegui obter os percursos a pé reais (sem ligação ao servidor de mapas). ' +
+        'Os tempos a pé são estimados em linha reta e podem atravessar rios ou linhas de comboio.</div>';
     }
     if (!res.noStops) html += shareRow(state.from, state.to);
     if (res.walkOnly) {
@@ -334,20 +415,32 @@
     var p = dv.split('-'), q = tv.split(':');
     var date = new Date(+p[0], +p[1] - 1, +p[2]);
     var mode = state.mode === 'arr' ? 'arr' : 'dep';
-    $('go').disabled = true;
-    setTimeout(function () {      // deixa o botão pintar antes do cálculo
+    var btn = $('go');
+    btn.disabled = true; btn.textContent = 'A calcular percursos a pé…';
+    var from = state.from, to = state.to;
+    var t = +q[0] * 3600 + +q[1] * 60;
+
+    // tempos reais a pé (rio, linha férrea, escadas…); se falhar, estima em linha reta
+    walkTimes(from, to).then(function (w) {
+      return { access: w.access, egress: w.egress, direct: w.direct, estimated: false };
+    }, function (err) {
+      console.warn('percursos a pé reais indisponíveis', err);
+      return { estimated: true };
+    }).then(function (walk) {
       var res;
       try {
-        res = net.plan({ from: state.from, to: state.to, date: date, time: +q[0] * 3600 + +q[1] * 60, mode: mode, max: 5 });
+        res = net.plan({ from: from, to: to, date: date, time: t, mode: mode, max: 5,
+          access: walk.access, egress: walk.egress, direct: walk.direct });
       } catch (err) {
         console.error(err);
         $('results').innerHTML = '<div class="card empty">Erro ao calcular o itinerário.</div>';
         refreshGo(); return;
       }
+      res.estimated = walk.estimated;
       renderJourneys(res, mode);
       refreshGo();
       (res.journeys.length ? $('map') : $('results')).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 20);
+    });
   }
 
   // ---- arranque ---------------------------------------------------------

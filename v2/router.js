@@ -69,6 +69,7 @@
     this.built = data.built;
     this.smtucFeed = data.smtucFeed;
     this.cal = data.cal;
+    this._footData = data.foot || null;
     this.serviceKeys = data.services;
     this.stops = data.stops.map(function (s, i) {
       return { id: i, name: s[0], lat: s[1], lon: s[2], op: s[3], code: s[4], norm: norm(s[0]) };
@@ -108,6 +109,13 @@
   Network.prototype._buildFootpaths = function () {
     var self = this, g = this._grid();
     this.foot = this.stops.map(function () { return []; });
+    this._gridCache = g;
+    if (this._footData) {     // tempos reais a pé (build_data.py), que já contornam rio, linha férrea, etc.
+      Object.keys(this._footData).forEach(function (id) {
+        self._footData[id].forEach(function (f) { self.foot[id].push([f[0], f[1] + FOOT_BUFFER]); });
+      });
+      return;
+    }
     this.stops.forEach(function (s) {
       var cy = Math.floor(s.lat / 0.003), cx = Math.floor(s.lon / 0.004);
       for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
@@ -140,6 +148,22 @@
     var res = within(ACCESS_M);
     if (!res.length) res = within(2500);
     return res.slice(0, ACCESS_MAX);
+  };
+
+  // paragens candidatas (linha reta) a que se vai pedir o tempo real a pé
+  Network.prototype.candidates = function (lat, lon) {
+    var self = this, r = 1000, out = [];
+    var dLat = r / 111000, dLon = r / (111000 * Math.cos(rad(lat)));
+    var y0 = Math.floor((lat - dLat) / 0.003), y1 = Math.floor((lat + dLat) / 0.003);
+    var x0 = Math.floor((lon - dLon) / 0.004), x1 = Math.floor((lon + dLon) / 0.004);
+    for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+      (self._gridCache[y + ',' + x] || []).forEach(function (id) {
+        var s = self.stops[id], d = dist(lat, lon, s.lat, s.lon);
+        if (d <= r) out.push({ stop: id, d: d });
+      });
+    }
+    out.sort(function (a, b) { return a.d - b.d; });
+    return out.slice(0, 40).map(function (o) { return o.stop; });
   };
 
   // ---- pesquisa de paragens por nome ------------------------------------
@@ -373,7 +397,7 @@
         var a = l.fromOrigin ? { name: from.name, lat: from.lat, lon: from.lon, origin: true } : self._pt(l.fromStop);
         var b = l.toDest ? { name: to.name, lat: to.lat, lon: to.lon, dest: true } : self._pt(l.toStop);
         out.push({ type: 'walk', from: a, to: b, start: t, end: t + l.secs, secs: l.secs,
-          m: Math.round(dist(a.lat, a.lon, b.lat, b.lon) * DETOUR) });
+          m: l.m ? Math.round(l.m) : Math.round(Math.max(0, l.secs - FOOT_BUFFER) * WALK_SPEED) });
         t += l.secs;
       } else {
         var r = self.routes[l.route], stops = [];
@@ -416,15 +440,16 @@
    * Devolve { journeys, walkOnly, covered, warnings } */
   Network.prototype.plan = function (opts) {
     var max = opts.max || 5, mode = opts.mode || 'dep';
-    var access = this.nearby(opts.from.lat, opts.from.lon);
-    var egress = this.nearby(opts.to.lat, opts.to.lon);
+    var access = opts.access || this.nearby(opts.from.lat, opts.from.lon);
+    var egress = opts.egress || this.nearby(opts.to.lat, opts.to.lon);
     var inst = this._instances(opts.date);
     var res = { journeys: [], walkOnly: null, warnings: [],
       covered: this.smtucCovers(opts.date) };
     if (!res.covered) res.warnings.push('smtuc-sem-dados');
 
     var direct = dist(opts.from.lat, opts.from.lon, opts.to.lat, opts.to.lon);
-    if (direct * DETOUR / WALK_SPEED <= 1800) res.walkOnly = { secs: walkSecs(direct), m: Math.round(direct * DETOUR) };
+    if (opts.direct) { if (opts.direct.secs <= 1800) res.walkOnly = opts.direct; }
+    else if (direct * DETOUR / WALK_SPEED <= 1800) res.walkOnly = { secs: walkSecs(direct), m: Math.round(direct * DETOUR) };
     res.noStops = !access.length || !egress.length;
     if (res.noStops) return res;
 
