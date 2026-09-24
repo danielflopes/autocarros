@@ -28,7 +28,10 @@
   body{
     margin:0; color:var(--ink); font-family:'Work Sans',sans-serif;
     background:radial-gradient(ellipse 700px 400px at 50% -10%, rgba(255,183,3,0.07), transparent), var(--bg);
-    display:flex; justify-content:center; padding:16px 12px 40px;
+    display:flex; justify-content:center;
+    /* viewport-fit=cover + barra de estado translúcida: sem isto o topo fica sob a ilha dinâmica */
+    padding:calc(16px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+            calc(40px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   }
   .app{width:100%; max-width:460px;}
   h1{font-size:1.15rem; margin:0; font-weight:700; letter-spacing:-.01em;}
