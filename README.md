@@ -7,42 +7,14 @@ o que lá passa, dos dois serviços do Metro Mondego.
   horários fixos embutidos no HTML — dias úteis, sábados, e
   domingos/feriados, 37 paragens, nos dois sentidos. Dá o próximo
   autocarro com contagem decrescente. A paragem fica em `localStorage`.
-- **Urbana** (Coimbra B / República / Vale das Flores): o operador não
-  publica passagens, publica frequências. As horas da urbana na tabela
-  são por isso **geradas** e aparecem com `(est.)` — parte-se da 1ª viagem na
-  origem, avança-se pela frequência da banda em que cada partida cai até
-  à última viagem, e soma-se o tempo medido até à paragem. Nas bandas
-  com intervalo (ex.: 5–7,5 min) usa-se o ponto médio. Nas paragens que
-  a urbana não serve não aparece nenhuma linha `(est.)`.
-
-  Uma paragem do tronco comum é servida por duas ligações com o mesmo
-  destino (Colégios, para Vale das Flores, recebe as de Coimbra B e as
-  da República). Gera-se **uma série só por destino**, não uma por
-  ligação: o site oficial publica exatamente a mesma frequência em
-  paragens de ramo (Coimbra B, República) e de tronco (Portagem,
-  Colégios, Solum), o que só faz sentido se o número descrever o que
-  passa naquela paragem venha de onde vier. Contar as duas séries em
-  separado duplicava o mesmo autocarro.
-
-  Pela mesma razão, uma passagem estimada que caia a menos de 5 minutos
-  de um horário real do suburbano é descartada. Cinco minutos é a
-  frequência mais apertada que a urbana publica: se o número publicado
-  descreve tudo o que passa na paragem, nada lá passa mais perto do que
-  isso, logo é o mesmo autocarro contado duas vezes — e entre uma
-  estimativa e um horário publicado, vale o publicado.
-
-  As estimativas não são inventadas: a âncora (1ª e última viagem na
-  origem) vem do horário oficial, e o tempo até cada paragem foi medido
-  nas viagens reais do `FULL_DATA` — a urbana corre no mesmo corredor do
-  suburbano e as paragens sobrepõem-se.
-
-  Coimbra B e República são dois ramos. Para Vale das Flores descem os
-  dois até à Portagem, mas **entre si ligam-se em cima**, cortando do
-  Arnado para a Loja de Cidadão sem passar pela Portagem. O Aeminium só
-  serve a ligação Portagem–Coimbra B. Essa perna Arnado–Loja de Cidadão
-  é a única sem medição possível (nenhum serviço do `FULL_DATA` a
-  percorre): 403 m estimados a 257 m/min, a velocidade medida neste
-  mesmo corredor.
+- **Urbana** (Coimbra B / República / Vale das Flores): horas reais por
+  paragem, dias úteis, sábados e domingos/feriados, das viagens U1, U2 e U3
+  do planeador de viagens da Metro Mondego
+  (<https://planearviagem.metromondego.pt/>, ficheiros `data/trips-*.json`).
+  Em cada paragem aparecem todas as passagens, com o destino; a última
+  paragem de cada viagem fica de fora (aí o autocarro termina). Vêm em
+  `URBAN_DATA`, em texto compacto (`"05:05v 05:11c ..."`, com v = Vale das
+  Flores, c = Coimbra B, r = República).
 
   Mais a norte, o troço Sereia / Celas / Polo Ciências da Saúde /
   Pediátrico / Hospitais ainda está em construção — a República é a
