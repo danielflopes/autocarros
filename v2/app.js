@@ -249,6 +249,17 @@
       '<div class="st">' + stopName(l.to) + '</div></div></div>';
   }
 
+  // Links para abrir a rota nas apps de mapas, que têm o trânsito e os atrasos em tempo real.
+  // Não dá para lhes passar a hora nem o itinerário exato: recalculam a partir de "agora".
+  function shareRow(a, b) {
+    var o = a.lat + ',' + a.lon, d = b.lat + ',' + b.lon;
+    var g = 'https://www.google.com/maps/dir/?api=1&travelmode=transit&origin=' + o + '&destination=' + d;
+    var ap = 'https://maps.apple.com/?dirflg=r&saddr=' + o + '&daddr=' + d;
+    return '<div class="share"><span>Ver em tempo real</span>' +
+      '<a href="' + g + '" target="_blank" rel="noopener">Google Maps</a>' +
+      '<a href="' + ap + '" target="_blank" rel="noopener">Apple Maps</a></div>';
+  }
+
   function renderJourneys(res, mode) {
     var box = $('results'), banner = $('banner'), html = '';
     banner.innerHTML = '';
@@ -257,6 +268,7 @@
       banner.innerHTML = '<div class="warn">A SMTUC não tem horários publicados para esta data (o ficheiro cobre ' +
         fmtYmd(f.start) + ' a ' + fmtYmd(f.end) + '). Só aparecem serviços do Metro Mondego.</div>';
     }
+    if (!res.noStops) html += shareRow(state.from, state.to);
     if (res.walkOnly) {
       html += '<div class="walkonly">A pé: <b>' + dur(res.walkOnly.secs) + '</b> · ' + res.walkOnly.m + ' m</div>';
     }
